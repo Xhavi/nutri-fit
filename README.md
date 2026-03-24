@@ -10,14 +10,36 @@ NutriFit helps people build sustainable healthy habits by unifying food tracking
 ## Core stack
 - **Frontend:** Flutter (Dart)
 - **Architecture approach:** Feature-first, modular, clean-code oriented
-- **Planned backend:** Serverless services for AI orchestration and data APIs
+- **Backend integration:** Firebase-ready core with environment-based configuration
 
-## Initial modules (MVP-oriented)
-- Authentication & user profile
-- Nutrition logging (meals, macros, daily summary)
-- Exercise logging (sessions, intensity, duration)
-- Progress tracking (weight, measurements, streaks, trends)
-- AI coach chat (wellness guidance and habit support)
+## Local setup
+
+### 1) Install dependencies
+
+```bash
+flutter pub get
+```
+
+### 2) Run in local mock mode (recommended for first run)
+
+```bash
+flutter run \
+  --dart-define=APP_ENV=dev \
+  --dart-define=FIREBASE_ENABLED=false \
+  --dart-define=FIREBASE_USE_MOCKS=true
+```
+
+### 3) Quality checks
+
+```bash
+flutter analyze
+flutter test
+```
+
+## Firebase and environments docs
+
+- Firebase setup guide: `docs/setup/firebase.md`
+- Environment configuration guide: `docs/setup/environments.md`
 
 ## Expected repository structure
 ```text
@@ -25,23 +47,20 @@ nutri-fit/
   AGENTS.md
   README.md
   docs/
-    product/
-      vision.md
-      scope.md
     architecture/
       overview.md
+    product/
+      scope.md
+      vision.md
+    setup/
+      environments.md
+      firebase.md
     roadmap.md
-  app/                # Flutter app (to be created later)
-  backend/            # Serverless/API components (future)
+  lib/
+    core/
+    features/
+    shared/
 ```
 
-## Working flow with Codex
-1. Define objective and constraints for a small iteration.
-2. Ask Codex for a short plan before edits.
-3. Implement only the scoped change set.
-4. Run checks/tests for impacted areas.
-5. Review diff and commit with clear message.
-6. Open PR with context, risks, and next step.
-
 ## Current status
-This repository currently contains foundational documentation to preserve product context before bootstrapping the Flutter application.
+The app includes a Firebase-ready bootstrap, environment separation, and mock adapters for Auth/Firestore/Cloud Functions while full authentication flows are still pending.
