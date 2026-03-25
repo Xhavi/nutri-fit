@@ -1,22 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/bootstrap/app_bootstrap.dart';
 import '../core/config/app_environment.dart';
 import 'router/app_router.dart';
 import 'theme/app_theme.dart';
 
-class NutriFitApp extends StatelessWidget {
+class NutriFitApp extends ConsumerWidget {
   const NutriFitApp({required this.startup, super.key});
 
   final AppBootstrapResult startup;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final router = ref.watch(appRouterProvider);
+
     return MaterialApp.router(
       title: 'NutriFit',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      routerConfig: appRouter,
+      routerConfig: router,
       builder: (BuildContext context, Widget? child) {
         final String environmentLabel =
             startup.config.environment == AppEnvironment.prod ? 'PROD' : 'DEV';
