@@ -20,3 +20,9 @@ build/
 
 # Logs
 *.log
+
+# Firebase Functions
+functions/node_modules/
+functions/lib/
+.firebase/
+firebase-debug.log

@@ -36,10 +36,47 @@ flutter analyze
 flutter test
 ```
 
+## AI Coach backend (Firebase Functions)
+
+Server-side foundation is under `functions/` using TypeScript + Firebase Cloud Functions.
+
+### Local backend setup
+
+```bash
+cd functions
+npm install
+npm run build
+```
+
+### Environment and secrets
+
+The mobile app must never include the OpenAI API key. Configure it only on backend:
+
+```bash
+firebase functions:secrets:set OPENAI_API_KEY
+firebase functions:params:set AI_COACH_PROVIDER=openai
+firebase functions:params:set OPENAI_MODEL=gpt-4.1-mini
+```
+
+For local/dev without credentials, keep mock mode:
+
+```bash
+firebase functions:params:set AI_COACH_PROVIDER=mock
+```
+
+### Deploy
+
+```bash
+firebase deploy --only functions
+```
+
 ## Firebase and environments docs
 
 - Firebase setup guide: `docs/setup/firebase.md`
 - Environment configuration guide: `docs/setup/environments.md`
+- AI backend architecture: `docs/ai/architecture.md`
+- AI prompt strategy: `docs/ai/prompt-strategy.md`
+- AI safety rules: `docs/ai/safety-rules.md`
 
 ## Expected repository structure
 ```text
@@ -49,6 +86,10 @@ nutri-fit/
   docs/
     architecture/
       overview.md
+    ai/
+      architecture.md
+      prompt-strategy.md
+      safety-rules.md
     product/
       scope.md
       vision.md
@@ -56,6 +97,8 @@ nutri-fit/
       environments.md
       firebase.md
     roadmap.md
+  functions/
+    src/
   lib/
     core/
     features/
