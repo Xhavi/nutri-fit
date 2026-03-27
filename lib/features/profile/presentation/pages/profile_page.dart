@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../features/exercise/presentation/controllers/exercise_providers.dart';
 import '../../../../shared/layouts/internal_base_layout.dart';
 import '../../../../shared/widgets/app_button.dart';
 import 'edit_health_profile_page.dart';
 import 'goals_review_page.dart';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final exerciseState = ref.watch(exerciseStateProvider);
+
     return InternalBaseLayout(
       title: 'Perfil',
       currentIndex: 5,
@@ -20,6 +24,24 @@ class ProfilePage extends StatelessWidget {
           const SizedBox(height: 8),
           const Text(
             'Configura perfil, metas y preferencias para construir objetivos de wellness base.',
+          ),
+          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text('Actividad física de hoy', style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 6),
+                  Text('Entrenamientos: ${exerciseState.dailySummary.workoutCount}'),
+                  Text('Minutos acumulados: ${exerciseState.dailySummary.totalMinutes}'),
+                  Text(
+                    'Calorías estimadas: ${exerciseState.dailySummary.estimatedCalories.toStringAsFixed(0)} kcal',
+                  ),
+                ],
+              ),
+            ),
           ),
           const SizedBox(height: 20),
           AppButton(
