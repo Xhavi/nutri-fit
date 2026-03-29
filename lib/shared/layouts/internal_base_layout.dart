@@ -40,6 +40,7 @@ class InternalBaseLayout extends StatelessWidget {
         ),
       ),
       bottomNavigationBar: NavigationBar(
+        labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
         selectedIndex: currentIndex,
         onDestinationSelected: (int index) {
           context.go(_items[index].path);

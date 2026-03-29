@@ -22,83 +22,115 @@ class ExercisePage extends ConsumerWidget {
     return InternalBaseLayout(
       title: 'Ejercicio',
       currentIndex: 2,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          Text('Entrenamientos de hoy', style: Theme.of(context).textTheme.headlineSmall),
-          const SizedBox(height: 6),
-          Text(DateFormat('EEEE, d MMMM', 'es').format(state.selectedDate)),
-          const SizedBox(height: 12),
-          _DailySummaryCard(state: state),
-          const SizedBox(height: 12),
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: AppButton(
-                  label: 'Agregar entrenamiento',
-                  leading: const Icon(Icons.add),
-                  onPressed: () async {
-                    final AddWorkoutResult? result = await Navigator.of(context).push<AddWorkoutResult>(
-                      MaterialPageRoute<AddWorkoutResult>(
-                        builder: (_) => const AddWorkoutPage(),
-                      ),
-                    );
-                    if (result == null) {
-                      return;
-                    }
-                    await controller.addWorkout(
-                      title: result.title,
-                      date: state.selectedDate,
-                      category: result.category,
-                      durationMinutes: result.durationMinutes,
-                      intensity: result.intensity,
-                      notes: result.notes,
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: AppButton(
-                  label: 'Ver historial',
-                  isSecondary: true,
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => ExerciseHistoryPage(
-                          history: state.history,
-                          onOpenDetail: (Workout workout) {
-                            Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => WorkoutDetailPage(
-                                  workout: workout,
-                                  weightKg: state.estimatedWeightKg,
+      child: state.isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : CustomScrollView(
+              slivers: <Widget>[
+                SliverToBoxAdapter(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      Text('Entrenamientos de hoy', style: Theme.of(context).textTheme.headlineSmall),
+                      const SizedBox(height: 6),
+                      Text(DateFormat('EEEE, d MMMM', 'es').format(state.selectedDate)),
+                      const SizedBox(height: 12),
+                      _DailySummaryCard(state: state),
+                      const SizedBox(height: 12),
+                      LayoutBuilder(
+                        builder: (BuildContext context, BoxConstraints constraints) {
+                          final bool isCompactLayout = constraints.maxWidth < 440;
+
+                          final Widget addWorkoutButton = AppButton(
+                            label: 'Agregar entrenamiento',
+                            leading: const Icon(Icons.add),
+                            onPressed: () async {
+                              final AddWorkoutResult? result =
+                                  await Navigator.of(context).push<AddWorkoutResult>(
+                                MaterialPageRoute<AddWorkoutResult>(
+                                  builder: (_) => const AddWorkoutPage(),
                                 ),
-                              ),
+                              );
+                              if (result == null) {
+                                return;
+                              }
+                              await controller.addWorkout(
+                                title: result.title,
+                                date: state.selectedDate,
+                                category: result.category,
+                                durationMinutes: result.durationMinutes,
+                                intensity: result.intensity,
+                                notes: result.notes,
+                              );
+                            },
+                          );
+
+                          final Widget historyButton = AppButton(
+                            label: 'Ver historial',
+                            isSecondary: true,
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => ExerciseHistoryPage(
+                                    history: state.history,
+                                    onOpenDetail: (Workout workout) {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute<void>(
+                                          builder: (_) => WorkoutDetailPage(
+                                            workout: workout,
+                                            weightKg: state.estimatedWeightKg,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+
+                          if (isCompactLayout) {
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: <Widget>[
+                                addWorkoutButton,
+                                const SizedBox(height: 8),
+                                historyButton,
+                              ],
                             );
-                          },
-                        ),
+                          }
+
+                          return Row(
+                            children: <Widget>[
+                              Expanded(child: addWorkoutButton),
+                              const SizedBox(width: 8),
+                              Expanded(child: historyButton),
+                            ],
+                          );
+                        },
                       ),
-                    );
-                  },
+                      const SizedBox(height: 14),
+                      _FutureExtensionsHint(),
+                      const SizedBox(height: 12),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          _FutureExtensionsHint(),
-          const SizedBox(height: 12),
-          Expanded(
-            child: state.isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : state.dailyWorkouts.isEmpty
-                    ? const Center(
-                        child: Text('Aún no registras entrenamientos para hoy.'),
-                      )
-                    : ListView.separated(
-                        itemBuilder: (BuildContext context, int index) {
-                          final Workout workout = state.dailyWorkouts[index];
-                          return Card(
+                if (state.dailyWorkouts.isEmpty)
+                  const SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(
+                      child: Text('Aún no registras entrenamientos para hoy.'),
+                    ),
+                  )
+                else
+                  SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (BuildContext context, int index) {
+                        final Workout workout = state.dailyWorkouts[index];
+                        return Padding(
+                          padding: EdgeInsets.only(
+                            bottom: index == state.dailyWorkouts.length - 1 ? 0 : 8,
+                          ),
+                          child: Card(
                             child: ListTile(
                               leading: const CircleAvatar(child: Icon(Icons.fitness_center_rounded)),
                               title: Text(workout.title),
@@ -121,14 +153,14 @@ class ExercisePage extends ConsumerWidget {
                                 );
                               },
                             ),
-                          );
-                        },
-                        separatorBuilder: (_, __) => const SizedBox(height: 8),
-                        itemCount: state.dailyWorkouts.length,
-                      ),
-          ),
-        ],
-      ),
+                          ),
+                        );
+                      },
+                      childCount: state.dailyWorkouts.length,
+                    ),
+                  ),
+              ],
+            ),
     );
   }
 }

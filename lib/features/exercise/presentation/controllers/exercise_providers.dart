@@ -15,7 +15,6 @@ final ChangeNotifierProvider<ExerciseController> exerciseControllerProvider =
         repository: ref.watch(exerciseRepositoryProvider),
       );
       controller.initialize();
-      ref.onDispose(controller.dispose);
       return controller;
     });
 

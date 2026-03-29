@@ -18,10 +18,18 @@ class AppButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final Widget child = Row(
       mainAxisAlignment: MainAxisAlignment.center,
-      mainAxisSize: MainAxisSize.min,
+      mainAxisSize: MainAxisSize.max,
       children: <Widget>[
         if (leading != null) ...<Widget>[leading!, const SizedBox(width: 8)],
-        Text(label),
+        Flexible(
+          fit: FlexFit.loose,
+          child: Text(
+            label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+          ),
+        ),
       ],
     );
 

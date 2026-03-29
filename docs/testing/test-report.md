@@ -27,8 +27,8 @@
 | Onboarding | ✅ VERIFIED | Required fields validated, onboarding completed, redirect to home confirmed |
 | Home | ✅ VERIFIED | Dashboard rendered after onboarding and after fresh app relaunch |
 | Nutrition | ✅ VERIFIED | Water controls, add meal, edit meal, and delete meal were exercised |
-| Exercise dashboard | ✅ VERIFIED | Dashboard rendered after locale fix; daily summary and seeded workout visible |
-| Exercise add/detail/history/delete | ⚠️ PARTIAL | Remaining subflows were interrupted by repeated emulator crashes/disconnects |
+| Exercise dashboard | ✅ VERIFIED | Dashboard rendered after locale/layout fixes; no overflow reproduced on the rerun |
+| Exercise add/detail/history/delete | ✅ VERIFIED | Validation snackbar, add, detail, history, and delete were completed manually and with widget tests |
 | Progress | ✅ VERIFIED | Weight, body metrics, adherence, and trend screen rendered |
 | AI Coach | ✅ VERIFIED | Disclaimer, empty state, send message, mock response, and safety reminder rendered |
 | Profile | ✅ VERIFIED | Main screen rendered with activity summary |
@@ -56,8 +56,11 @@
 - Reproduced the original locale crash before the fix:
   - `LocaleDataException: Locale data has not been initialized, call initializeDateFormatting(<locale>)`
 - Rebuilt after fixing locale initialization in `lib/main.dart`.
-- Verified exercise dashboard now opens normally.
-- Could not finish add/history/detail/delete validation because the emulator process disconnected multiple times during longer interaction chains.
+- Re-ran `Ejercicios` after the layout and controller lifecycle fixes.
+- Verified exercise dashboard now opens normally and the previous overflow is no longer reproducible.
+- Verified the add-workout validation snackbar (`Completa nombre y duración válida.`).
+- Added a new workout manually, confirmed the daily summary updated, opened workout detail, opened history, reopened detail from history, deleted the workout, and confirmed it disappeared from both dashboard and history.
+- During the rerun, the emulator still showed an intermittent `System UI isn't responding` dialog at startup, but once dismissed the NutriFit app continued working and no Flutter crash or app crash-buffer entry was reproduced.
 
 ### 4. Progress
 - Verified the `Progreso` screen renders:
@@ -97,8 +100,9 @@
 ### Medium priority
 2. **Android emulator instability limited long QA sequences**
    - Severity: Medium (environmental, not app code)
-   - The AVD process exited multiple times during longer flows, especially while switching screens and collecting UI dumps.
-   - Crash log buffer for the app was empty when checked.
+   - The AVD still showed `System UI isn't responding` after clean boots and has a history of `qemu-system-x86_64.exe` crashes in Windows Event Log / CrashDumps.
+   - Even so, the deep rerun of `Ejercicios` completed once the dialog was dismissed.
+   - Crash log buffer for the app remained empty when checked.
 
 ## Evidence
 - Visual evidence is stored in `docs/screenshots/`.
@@ -129,9 +133,12 @@
 - `27-after-signout.png`
 - `28-login.png`
 - `29-login-returns-onboarding.png`
+- `30-exercise-history-after-delete.png`
+- `31-exercise-layout-fixed.png`
 
 ## Overall conclusion
 - The project is now buildable locally on Android, `flutter analyze` passes, and `flutter test` passes.
 - Most user-facing modules were validated manually in the emulator.
 - The main remaining product issue found in runtime QA is the onboarding/session restoration bug after login.
-- The main remaining QA gap is the deeper exercise subflow coverage, which was cut short by emulator instability rather than by a confirmed app crash.
+- The `Ejercicios` subflow now has both manual coverage and widget-test coverage for validation, add, detail, history, and delete.
+- I did not reproduce a NutriFit app crash inside `Ejercicios` after the fixes; the remaining instability observed in this session points to the emulator/System UI layer rather than to a confirmed Flutter runtime failure in the feature.
