@@ -5,25 +5,36 @@
 
 ## Alcance
 - Flujo push-to-talk por turnos para `ai_voice` integrado en `ai_coach`.
-- Estados visuales y UX de errores.
-- Adaptador mock para transcript + respuesta de texto + audio simulado.
+- Integración de cliente Flutter contra endpoint real `voiceTurn` (callable).
+- Serialización de request/response con transcript, respuesta textual, audio y metadata.
+- Estados visuales explícitos: grabación, subida, procesamiento backend, respuesta lista, reproducción.
+- Manejo de errores: permisos, backend/red, timeout, audio vacío/corrupto.
 
 ## Comandos ejecutados
 | Comando | Resultado | Notas |
 |---|---|---|
-| `flutter pub get` | ⚠️ | `flutter: command not found` en este entorno. |
 | `flutter analyze` | ⚠️ | `flutter: command not found` en este entorno. |
 | `flutter test` | ⚠️ | `flutter: command not found` en este entorno. |
-| `flutter run` | ⚠️ | `flutter: command not found` en este entorno. |
+| `flutter run -d emulator-5554` | ⚠️ | `flutter: command not found` en este entorno. |
+| `dart format ...` | ⚠️ | `dart: command not found` en este entorno. |
 
-## Validación funcional (revisión de código)
-- Se implementó grabación real (plugin `record`) con archivo temporal en `getTemporaryDirectory()`.
-- Se implementó permisos de micrófono (plugin `permission_handler`).
-- Se implementó reproducción de audio de respuesta (plugin `audioplayers`) desde archivo temporal.
-- Se incorporó flujo UI con: iniciar/mantener pulsado, detener/enviar, cancelar y reintentar.
-- Se muestran transcript y respuesta textual del coach.
-- El mock ahora devuelve transcript + respuesta + bytes WAV silenciosos para simular audio reproducible.
+## Validación funcional (revisión de código en este entorno)
+- El cliente Firebase de voz ahora llama `voiceTurn` (backend real V1) con timeout de 60s.
+- El contrato del request Flutter se adaptó al backend:
+  - `audio.base64`, `audio.mimeType`
+  - `metadata.locale`
+  - `context` (mapeado desde `VoiceUserContext`)
+  - `conversation` y `voice` opcionales
+- El contrato del response Flutter ahora procesa:
+  - `userTranscript`
+  - `assistantText`
+  - `assistantAudio.base64` + `assistantAudio.mimeType`
+  - `meta` + `voiceProfileUsed` + `safety`
+- El controlador V1 ahora refleja estados separados de subida y procesamiento backend.
+- Se añadió validación de audio grabado vacío/corrupto antes de enviar al backend.
+- Se mantienen archivos temporales para grabación y respuesta de audio (reproducción local desde archivo temporal).
+- El chat de texto no fue modificado y permanece como canal alternativo.
 
 ## Capturas
-- No fue posible generar capturas porque este entorno no dispone de herramienta de ejecución visual (`flutter` / browser container).
-- Carpeta reservada para evidencia: `docs/screenshots/voice-v1/`.
+- No fue posible generar capturas ni prueba manual de app porque este entorno no dispone de `flutter` ejecutable.
+- Carpeta objetivo para evidencia: `docs/screenshots/voice-v1-integration/`.

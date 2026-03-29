@@ -1,4 +1,3 @@
-import '../../domain/models/transcription_result.dart';
 import '../../domain/models/voice_turn_models.dart';
 import 'ai_voice_api_client.dart';
 
@@ -14,19 +13,19 @@ class MockAiVoiceApiClient implements AiVoiceApiClient {
     return VoiceTurnResponse(
       assistantText:
           'Mock voice response: entendí "$userText". Recomendación breve: hidrátate y mantén una cena balanceada en proteína y fibra.',
-      outputAudio: _buildSilentWavBytes(durationMs: 550),
+      outputAudioBytes: _buildSilentWavBytes(durationMs: 550),
       outputAudioMimeType: 'audio/wav',
-      transcription: TranscriptionResult(
-        text: userText,
-        languageCode: request.locale ?? 'es',
-        confidence: 0.8,
-      ),
+      userTranscript: userText,
+      voiceProfileUsed: request.voiceProfile?.id ?? 'mock_voice',
       metadata: const VoiceTurnMetadata(
         requestId: 'mock-request',
         provider: 'mock',
         model: 'mock-model',
-        turnMode: 'ptt',
-        latencyMs: 300,
+        transcriptionModel: 'mock-transcription-model',
+        ttsModel: 'mock-tts-model',
+      ),
+      safety: const VoiceTurnSafety(
+        disclaimer: 'Este contenido es guía de bienestar, no consejo médico.',
       ),
     );
   }

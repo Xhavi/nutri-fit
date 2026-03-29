@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/errors/app_exception.dart';
 import '../domain/contracts/audio_player.dart';
 import '../domain/contracts/audio_recorder.dart';
 import '../domain/models/voice_playback_state.dart';
@@ -77,7 +78,7 @@ class VoiceTurnController extends ChangeNotifier {
     }
 
     _state = _state.copyWith(
-      status: VoiceTurnStatus.processing,
+      status: VoiceTurnStatus.uploading,
       recording: _state.recording.copyWith(status: VoiceRecordingStatus.stopping),
       clearErrorMessage: true,
     );
@@ -86,9 +87,12 @@ class VoiceTurnController extends ChangeNotifier {
     try {
       final String path = await _recorder.stopRecording();
       final List<int> audioBytes = await _recorder.readRecordingBytes(path);
+      if (audioBytes.isEmpty) {
+        throw AppException('Audio vacío o corrupto.');
+      }
 
       _state = _state.copyWith(
-        status: VoiceTurnStatus.transcriptReady,
+        status: VoiceTurnStatus.processingBackend,
         recording: _state.recording.copyWith(
           status: VoiceRecordingStatus.completed,
           localFilePath: path,
@@ -120,14 +124,17 @@ class VoiceTurnController extends ChangeNotifier {
       );
       notifyListeners();
 
-      if (response.outputAudio.isNotEmpty) {
+      if (response.outputAudioBytes.isNotEmpty) {
         _state = _state.copyWith(
           status: VoiceTurnStatus.playingAudio,
           playback: _state.playback.copyWith(status: VoicePlaybackStatus.playing),
         );
         notifyListeners();
 
-        await _player.playBytes(response.outputAudio, mimeType: response.outputAudioMimeType);
+        await _player.playBytes(
+          response.outputAudioBytes,
+          mimeType: response.outputAudioMimeType,
+        );
       }
 
       _state = _state.copyWith(
@@ -135,10 +142,20 @@ class VoiceTurnController extends ChangeNotifier {
         playback: _state.playback.copyWith(status: VoicePlaybackStatus.completed),
       );
       notifyListeners();
-    } catch (_) {
+    } on AppException catch (error) {
       _state = _state.copyWith(
         status: VoiceTurnStatus.error,
-        errorMessage: 'No fue posible completar el turno de voz.',
+        errorMessage: error.message,
+        playback: _state.playback.copyWith(
+          status: VoicePlaybackStatus.error,
+          errorMessage: error.message,
+        ),
+      );
+      notifyListeners();
+    } catch (error) {
+      _state = _state.copyWith(
+        status: VoiceTurnStatus.error,
+        errorMessage: 'No fue posible completar el turno de voz: $error',
         playback: _state.playback.copyWith(
           status: VoicePlaybackStatus.error,
           errorMessage: 'Fallo en backend o reproducción.',
@@ -180,7 +197,10 @@ class VoiceTurnController extends ChangeNotifier {
 
     try {
       final List<int> audioBytes = await _recorder.readRecordingBytes(path);
-      _state = _state.copyWith(status: VoiceTurnStatus.processing, clearErrorMessage: true);
+      _state = _state.copyWith(
+        status: VoiceTurnStatus.processingBackend,
+        clearErrorMessage: true,
+      );
       notifyListeners();
 
       final VoiceTurnResponse response = await _repository.sendVoiceTurn(
@@ -194,13 +214,16 @@ class VoiceTurnController extends ChangeNotifier {
       );
       notifyListeners();
 
-      if (response.outputAudio.isNotEmpty) {
+      if (response.outputAudioBytes.isNotEmpty) {
         _state = _state.copyWith(
           status: VoiceTurnStatus.playingAudio,
           playback: _state.playback.copyWith(status: VoicePlaybackStatus.playing),
         );
         notifyListeners();
-        await _player.playBytes(response.outputAudio, mimeType: response.outputAudioMimeType);
+        await _player.playBytes(
+          response.outputAudioBytes,
+          mimeType: response.outputAudioMimeType,
+        );
       }
 
       _state = _state.copyWith(
