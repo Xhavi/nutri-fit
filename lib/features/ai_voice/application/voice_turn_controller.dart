@@ -31,8 +31,9 @@ class VoiceTurnController extends ChangeNotifier {
     }
 
     _state = _state.copyWith(
-      status: VoiceTurnStatus.recording,
+      status: VoiceTurnStatus.requestingPermission,
       clearErrorMessage: true,
+      clearLastResponse: true,
       recording: _state.recording.copyWith(status: VoiceRecordingStatus.requestingPermission),
     );
     notifyListeners();
@@ -65,7 +66,8 @@ class VoiceTurnController extends ChangeNotifier {
     }
   }
 
-  Future<void> stopRecordingAndSend({
+  Future<void> stopRecording({
+    bool sendAfterStop = true,
     String? transcript,
     VoiceUserContext? userContext,
     String? voiceStyleInstructions,
@@ -75,7 +77,7 @@ class VoiceTurnController extends ChangeNotifier {
     }
 
     _state = _state.copyWith(
-      status: VoiceTurnStatus.uploading,
+      status: VoiceTurnStatus.processing,
       recording: _state.recording.copyWith(status: VoiceRecordingStatus.stopping),
       clearErrorMessage: true,
     );
@@ -85,6 +87,20 @@ class VoiceTurnController extends ChangeNotifier {
       final String path = await _recorder.stopRecording();
       final List<int> audioBytes = await _recorder.readRecordingBytes(path);
 
+      _state = _state.copyWith(
+        status: VoiceTurnStatus.transcriptReady,
+        recording: _state.recording.copyWith(
+          status: VoiceRecordingStatus.completed,
+          localFilePath: path,
+          clearErrorMessage: true,
+        ),
+      );
+      notifyListeners();
+
+      if (!sendAfterStop) {
+        return;
+      }
+
       final VoiceTurnRequest request = VoiceTurnRequest(
         inputAudio: audioBytes,
         transcript: transcript,
@@ -92,19 +108,10 @@ class VoiceTurnController extends ChangeNotifier {
         voiceStyleInstructions: voiceStyleInstructions,
       );
 
-      _state = _state.copyWith(
-        status: VoiceTurnStatus.processing,
-        recording: _state.recording.copyWith(
-          status: VoiceRecordingStatus.completed,
-          localFilePath: path,
-        ),
-      );
-      notifyListeners();
-
       final VoiceTurnResponse response = await _repository.sendVoiceTurn(request);
 
       _state = _state.copyWith(
-        status: VoiceTurnStatus.playing,
+        status: VoiceTurnStatus.responseReady,
         lastResponse: response,
         playback: _state.playback.copyWith(
           status: VoicePlaybackStatus.preparing,
@@ -113,11 +120,18 @@ class VoiceTurnController extends ChangeNotifier {
       );
       notifyListeners();
 
-      // TODO(V1): Integrar reproducción real del audio de respuesta.
-      await _player.playBytes(response.outputAudio, mimeType: response.outputAudioMimeType);
+      if (response.outputAudio.isNotEmpty) {
+        _state = _state.copyWith(
+          status: VoiceTurnStatus.playingAudio,
+          playback: _state.playback.copyWith(status: VoicePlaybackStatus.playing),
+        );
+        notifyListeners();
+
+        await _player.playBytes(response.outputAudio, mimeType: response.outputAudioMimeType);
+      }
 
       _state = _state.copyWith(
-        status: VoiceTurnStatus.done,
+        status: VoiceTurnStatus.responseReady,
         playback: _state.playback.copyWith(status: VoicePlaybackStatus.completed),
       );
       notifyListeners();
@@ -129,6 +143,75 @@ class VoiceTurnController extends ChangeNotifier {
           status: VoicePlaybackStatus.error,
           errorMessage: 'Fallo en backend o reproducción.',
         ),
+      );
+      notifyListeners();
+    }
+  }
+
+  Future<void> cancelRecording() async {
+    if (!_state.recording.canStop) {
+      return;
+    }
+
+    await _recorder.cancelRecording();
+    _state = _state.copyWith(
+      status: VoiceTurnStatus.idle,
+      recording: _state.recording.copyWith(
+        status: VoiceRecordingStatus.idle,
+        elapsed: Duration.zero,
+        clearLocalFilePath: true,
+      ),
+      clearErrorMessage: true,
+      clearLastResponse: true,
+    );
+    notifyListeners();
+  }
+
+  Future<void> retryLastTurn() async {
+    final String? path = _state.recording.localFilePath;
+    if (path == null || path.isEmpty) {
+      _state = _state.copyWith(
+        status: VoiceTurnStatus.error,
+        errorMessage: 'No hay audio grabado para reintentar.',
+      );
+      notifyListeners();
+      return;
+    }
+
+    try {
+      final List<int> audioBytes = await _recorder.readRecordingBytes(path);
+      _state = _state.copyWith(status: VoiceTurnStatus.processing, clearErrorMessage: true);
+      notifyListeners();
+
+      final VoiceTurnResponse response = await _repository.sendVoiceTurn(
+        VoiceTurnRequest(inputAudio: audioBytes),
+      );
+
+      _state = _state.copyWith(
+        status: VoiceTurnStatus.responseReady,
+        lastResponse: response,
+        playback: _state.playback.copyWith(status: VoicePlaybackStatus.preparing),
+      );
+      notifyListeners();
+
+      if (response.outputAudio.isNotEmpty) {
+        _state = _state.copyWith(
+          status: VoiceTurnStatus.playingAudio,
+          playback: _state.playback.copyWith(status: VoicePlaybackStatus.playing),
+        );
+        notifyListeners();
+        await _player.playBytes(response.outputAudio, mimeType: response.outputAudioMimeType);
+      }
+
+      _state = _state.copyWith(
+        status: VoiceTurnStatus.responseReady,
+        playback: _state.playback.copyWith(status: VoicePlaybackStatus.completed),
+      );
+      notifyListeners();
+    } catch (_) {
+      _state = _state.copyWith(
+        status: VoiceTurnStatus.error,
+        errorMessage: 'No fue posible reintentar el turno de voz.',
       );
       notifyListeners();
     }

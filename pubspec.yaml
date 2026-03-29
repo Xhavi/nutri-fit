@@ -21,6 +21,10 @@ dependencies:
   firebase_auth: ^5.6.1
   cloud_firestore: ^5.6.8
   cloud_functions: ^5.6.1
+  record: ^6.1.2
+  audioplayers: ^6.4.0
+  permission_handler: ^11.4.0
+  path_provider: ^2.1.5
 
 dev_dependencies:
   flutter_test:

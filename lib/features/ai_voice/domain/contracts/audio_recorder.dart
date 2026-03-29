@@ -5,7 +5,11 @@ abstract class AudioRecorder {
 
   Future<String> stopRecording();
 
+  Future<void> cancelRecording();
+
   Future<List<int>> readRecordingBytes(String path);
+
+  Future<void> deleteRecording(String path);
 
   Future<void> dispose();
 }

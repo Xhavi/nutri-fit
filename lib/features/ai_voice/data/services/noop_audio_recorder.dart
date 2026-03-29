@@ -18,10 +18,16 @@ class NoopAudioRecorder implements AudioRecorder {
   }
 
   @override
+  Future<void> cancelRecording() async {}
+
+  @override
   Future<List<int>> readRecordingBytes(String path) async {
     // TODO(V1): Leer bytes del archivo de audio local.
     return const <int>[];
   }
+
+  @override
+  Future<void> deleteRecording(String path) async {}
 
   @override
   Future<void> dispose() async {}
