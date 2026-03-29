@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../app/router/app_router.dart';
 import '../../../../shared/layouts/internal_base_layout.dart';
 import '../../../ai_voice/presentation/widgets/voice_turn_controls.dart';
+import '../../../subscriptions/presentation/controllers/subscription_providers.dart';
 import '../../domain/models/ai_coach_chat_message.dart';
 import '../controllers/ai_coach_providers.dart';
 import '../controllers/ai_coach_state.dart';
@@ -53,6 +56,7 @@ class _AiCoachPageState extends ConsumerState<AiCoachPage> {
   @override
   Widget build(BuildContext context) {
     final AiCoachState state = ref.watch(aiCoachStateProvider);
+    final bool hasPremium = ref.watch(hasPremiumAiProvider);
 
     ref.listen<AiCoachState>(aiCoachStateProvider, (_, AiCoachState next) {
       _scrollToBottom();
@@ -68,6 +72,10 @@ class _AiCoachPageState extends ConsumerState<AiCoachPage> {
             usesMockBackend: state.usesMockBackend,
             onDismiss: () => ref.read(aiCoachControllerProvider).dismissDisclaimer(),
           ),
+          if (!hasPremium)
+            _PremiumGateCard(
+              onOpenPaywall: () => context.push(AppRoutePaths.paywall),
+            ),
           if (state.errorMessage != null)
             _ErrorBanner(
               message: state.errorMessage!,
@@ -96,11 +104,41 @@ class _AiCoachPageState extends ConsumerState<AiCoachPage> {
           _Composer(
             controller: _textController,
             isSending: state.isSending,
+            enabled: hasPremium,
             onSend: _sendMessage,
           ),
           const SizedBox(height: 8),
-          const VoiceTurnControls(),
+          VoiceTurnControls(enabled: hasPremium),
         ],
+      ),
+    );
+  }
+}
+
+class _PremiumGateCard extends StatelessWidget {
+  const _PremiumGateCard({required this.onOpenPaywall});
+
+  final VoidCallback onOpenPaywall;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: Theme.of(context).colorScheme.secondaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: <Widget>[
+            const Icon(Icons.lock_rounded),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text('Las funciones de IA premium están bloqueadas. Activa la suscripción para continuar.'),
+            ),
+            FilledButton(
+              onPressed: onOpenPaywall,
+              child: const Text('Ver planes'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -259,11 +297,13 @@ class _Composer extends StatelessWidget {
   const _Composer({
     required this.controller,
     required this.isSending,
+    required this.enabled,
     required this.onSend,
   });
 
   final TextEditingController controller;
   final bool isSending;
+  final bool enabled;
   final VoidCallback onSend;
 
   @override
@@ -274,19 +314,22 @@ class _Composer extends StatelessWidget {
         Expanded(
           child: TextField(
             controller: controller,
+            enabled: enabled,
             maxLines: 4,
             minLines: 1,
             textInputAction: TextInputAction.send,
             onSubmitted: (_) => onSend(),
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Escribe tu mensaje',
-              hintText: 'Cuéntame qué necesitas para avanzar hoy…',
+              hintText: enabled
+                  ? 'Cuéntame qué necesitas para avanzar hoy…'
+                  : 'Activa AI Premium para enviar mensajes.',
             ),
           ),
         ),
         const SizedBox(width: 8),
         FilledButton.icon(
-          onPressed: isSending ? null : onSend,
+          onPressed: (!enabled || isSending) ? null : onSend,
           icon: const Icon(Icons.send_rounded),
           label: const Text('Enviar'),
         ),

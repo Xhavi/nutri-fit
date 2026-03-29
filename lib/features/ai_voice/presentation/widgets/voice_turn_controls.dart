@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/voice_turn_controller.dart';
 import '../../application/voice_turn_state.dart';
 import '../../domain/models/voice_turn_models.dart';
 import '../controllers/ai_voice_providers.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class VoiceTurnControls extends ConsumerWidget {
-  const VoiceTurnControls({super.key});
+  const VoiceTurnControls({this.enabled = true, super.key});
+
+  final bool enabled;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -23,7 +25,9 @@ class VoiceTurnControls extends ConsumerWidget {
             Text('Voz V2 (turnos)', style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: 6),
             Text(
-              'Habla por turnos, recibe respuesta con perfil de voz y reproduce de nuevo cuando quieras.',
+              enabled
+                  ? 'Habla por turnos, recibe respuesta con perfil de voz y reproduce de nuevo cuando quieras.'
+                  : 'Bloqueado: activa AI Premium para usar conversación por voz.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 10),
@@ -41,17 +45,19 @@ class VoiceTurnControls extends ConsumerWidget {
                     ),
                   )
                   .toList(growable: false),
-              onChanged: (String? id) {
-                if (id == null) {
-                  return;
-                }
+              onChanged: !enabled
+                  ? null
+                  : (String? id) {
+                      if (id == null) {
+                        return;
+                      }
 
-                final selected = state.availableProfiles.firstWhere(
-                  (profile) => profile.id == id,
-                  orElse: () => state.selectedVoiceProfile,
-                );
-                controller.setVoiceProfile(selected);
-              },
+                      final selected = state.availableProfiles.firstWhere(
+                        (profile) => profile.id == id,
+                        orElse: () => state.selectedVoiceProfile,
+                      );
+                      controller.setVoiceProfile(selected);
+                    },
             ),
             const SizedBox(height: 8),
             SwitchListTile.adaptive(
@@ -59,17 +65,17 @@ class VoiceTurnControls extends ConsumerWidget {
               title: const Text('Reproducir automáticamente la respuesta'),
               subtitle: const Text('Si está apagado, podrás escuchar manualmente con "Reproducir".'),
               value: state.autoplayEnabled,
-              onChanged: controller.setAutoplayEnabled,
+              onChanged: enabled ? controller.setAutoplayEnabled : null,
             ),
             const SizedBox(height: 8),
             GestureDetector(
-              onLongPressStart: (_) => controller.startRecording(),
-              onLongPressEnd: (_) => controller.stopRecording(),
-              onLongPressCancel: () => controller.cancelRecording(),
+              onLongPressStart: enabled ? (_) => controller.startRecording() : null,
+              onLongPressEnd: enabled ? (_) => controller.stopRecording() : null,
+              onLongPressCancel: enabled ? () => controller.cancelRecording() : null,
               child: SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: state.isBusy ? null : () => controller.startRecording(),
+                  onPressed: (!enabled || state.isBusy) ? null : () => controller.startRecording(),
                   icon: Icon(
                     state.status == VoiceTurnStatus.recording
                         ? Icons.graphic_eq_rounded
@@ -89,33 +95,34 @@ class VoiceTurnControls extends ConsumerWidget {
               runSpacing: 8,
               children: <Widget>[
                 OutlinedButton.icon(
-                  onPressed: state.status == VoiceTurnStatus.recording
+                  onPressed: enabled && state.status == VoiceTurnStatus.recording
                       ? () => controller.stopRecording()
                       : null,
                   icon: const Icon(Icons.stop_rounded),
                   label: const Text('Detener y enviar'),
                 ),
                 OutlinedButton.icon(
-                  onPressed: state.status == VoiceTurnStatus.recording
+                  onPressed: enabled && state.status == VoiceTurnStatus.recording
                       ? () => controller.cancelRecording()
                       : null,
                   icon: const Icon(Icons.close_rounded),
                   label: const Text('Cancelar'),
                 ),
                 TextButton.icon(
-                  onPressed: state.recording.localFilePath == null
-                      ? null
-                      : () => controller.retryLastTurn(),
+                  onPressed: enabled && state.recording.localFilePath != null
+                      ? () => controller.retryLastTurn()
+                      : null,
                   icon: const Icon(Icons.refresh_rounded),
                   label: const Text('Reintentar turno'),
                 ),
                 TextButton.icon(
-                  onPressed: state.lastResponse == null ? null : () => controller.replayLastResponse(),
+                  onPressed:
+                      enabled && state.lastResponse != null ? () => controller.replayLastResponse() : null,
                   icon: const Icon(Icons.replay_rounded),
                   label: const Text('Reproducir respuesta'),
                 ),
                 TextButton.icon(
-                  onPressed: () => controller.stopPlayback(),
+                  onPressed: enabled ? () => controller.stopPlayback() : null,
                   icon: const Icon(Icons.stop_circle_outlined),
                   label: const Text('Detener audio'),
                 ),
