@@ -42,6 +42,9 @@ export async function processVoiceTurn(
       text: coach.assistantMessage,
       format: payload.voice?.format ?? 'mp3',
       voiceProfileId: payload.voice?.profileId ?? config.defaultVoice,
+      styleInstructions: payload.voice?.styleInstructions,
+      intent: payload.voice?.intent,
+      rate: payload.voice?.rate,
     },
     {
       provider: config.provider,

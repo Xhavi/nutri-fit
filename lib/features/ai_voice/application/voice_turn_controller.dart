@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../core/errors/app_exception.dart';
+import '../../../core/services/local_storage_service.dart';
 import '../domain/contracts/audio_player.dart';
 import '../domain/contracts/audio_recorder.dart';
 import '../domain/models/voice_playback_state.dart';
+import '../domain/models/voice_profile.dart';
 import '../domain/models/voice_recording_state.dart';
 import '../domain/models/voice_turn_models.dart';
 import '../domain/repositories/ai_voice_repository.dart';
@@ -14,17 +16,53 @@ class VoiceTurnController extends ChangeNotifier {
     required AiVoiceRepository repository,
     required AudioRecorder recorder,
     required AudioPlayer player,
+    required LocalStorageService localStorage,
   }) : _repository = repository,
        _recorder = recorder,
        _player = player,
-       _state = VoiceTurnState.initial();
+       _localStorage = localStorage,
+       _state = VoiceTurnState.initial() {
+    _restorePreferences();
+  }
+
+  static const String _voiceProfileKey = 'ai_voice.selected_profile.v2';
+  static const String _autoplayKey = 'ai_voice.autoplay_enabled.v2';
 
   final AiVoiceRepository _repository;
   final AudioRecorder _recorder;
   final AudioPlayer _player;
+  final LocalStorageService _localStorage;
 
   VoiceTurnState _state;
   VoiceTurnState get state => _state;
+
+  Future<void> _restorePreferences() async {
+    final String? savedProfileId = await _localStorage.getString(_voiceProfileKey);
+    final bool autoplayEnabled = await _localStorage.getBool(_autoplayKey) ?? true;
+
+    final VoiceProfile selectedProfile = _state.availableProfiles.firstWhere(
+      (VoiceProfile profile) => profile.id == savedProfileId,
+      orElse: VoiceProfile.fallback,
+    );
+
+    _state = _state.copyWith(
+      selectedVoiceProfile: selectedProfile,
+      autoplayEnabled: autoplayEnabled,
+    );
+    notifyListeners();
+  }
+
+  Future<void> setVoiceProfile(VoiceProfile profile) async {
+    _state = _state.copyWith(selectedVoiceProfile: profile);
+    notifyListeners();
+    await _localStorage.setString(_voiceProfileKey, profile.id);
+  }
+
+  Future<void> setAutoplayEnabled(bool value) async {
+    _state = _state.copyWith(autoplayEnabled: value);
+    notifyListeners();
+    await _localStorage.setBool(_autoplayKey, value);
+  }
 
   Future<void> startRecording() async {
     if (!_state.recording.canStart || _state.isBusy) {
@@ -109,7 +147,11 @@ class VoiceTurnController extends ChangeNotifier {
         inputAudio: audioBytes,
         transcript: transcript,
         userContext: userContext,
-        voiceStyleInstructions: voiceStyleInstructions,
+        voiceProfile: _state.selectedVoiceProfile,
+        voiceStyleInstructions:
+            voiceStyleInstructions ?? _state.selectedVoiceProfile.styleInstructions,
+        voiceRate: _suggestedRateForProfile(_state.selectedVoiceProfile),
+        voiceIntent: _intentForProfile(_state.selectedVoiceProfile),
       );
 
       final VoiceTurnResponse response = await _repository.sendVoiceTurn(request);
@@ -117,6 +159,18 @@ class VoiceTurnController extends ChangeNotifier {
       _state = _state.copyWith(
         status: VoiceTurnStatus.responseReady,
         lastResponse: response,
+        history: <VoiceTurnHistoryItem>[
+          VoiceTurnHistoryItem(
+            createdAt: DateTime.now(),
+            inputAudioPath: path,
+            userTranscript: response.userTranscript,
+            assistantText: response.assistantText,
+            voiceProfileUsed: response.voiceProfileUsed,
+            outputAudioBytes: response.outputAudioBytes,
+            outputAudioMimeType: response.outputAudioMimeType,
+          ),
+          ..._state.history,
+        ],
         playback: _state.playback.copyWith(
           status: VoicePlaybackStatus.preparing,
           clearErrorMessage: true,
@@ -124,24 +178,15 @@ class VoiceTurnController extends ChangeNotifier {
       );
       notifyListeners();
 
-      if (response.outputAudioBytes.isNotEmpty) {
+      if (_state.autoplayEnabled && response.outputAudioBytes.isNotEmpty) {
+        await replayLastResponse();
+      } else {
         _state = _state.copyWith(
-          status: VoiceTurnStatus.playingAudio,
-          playback: _state.playback.copyWith(status: VoicePlaybackStatus.playing),
+          status: VoiceTurnStatus.responseReady,
+          playback: _state.playback.copyWith(status: VoicePlaybackStatus.completed),
         );
         notifyListeners();
-
-        await _player.playBytes(
-          response.outputAudioBytes,
-          mimeType: response.outputAudioMimeType,
-        );
       }
-
-      _state = _state.copyWith(
-        status: VoiceTurnStatus.responseReady,
-        playback: _state.playback.copyWith(status: VoicePlaybackStatus.completed),
-      );
-      notifyListeners();
     } on AppException catch (error) {
       _state = _state.copyWith(
         status: VoiceTurnStatus.error,
@@ -160,6 +205,44 @@ class VoiceTurnController extends ChangeNotifier {
           status: VoicePlaybackStatus.error,
           errorMessage: 'Fallo en backend o reproducción.',
         ),
+      );
+      notifyListeners();
+    }
+  }
+
+  Future<void> replayLastResponse() async {
+    final VoiceTurnResponse? response = _state.lastResponse;
+    if (response == null || response.outputAudioBytes.isEmpty) {
+      _state = _state.copyWith(
+        status: VoiceTurnStatus.error,
+        errorMessage: 'No hay audio de respuesta para reproducir.',
+      );
+      notifyListeners();
+      return;
+    }
+
+    try {
+      _state = _state.copyWith(
+        status: VoiceTurnStatus.playingAudio,
+        playback: _state.playback.copyWith(status: VoicePlaybackStatus.playing),
+        clearErrorMessage: true,
+      );
+      notifyListeners();
+
+      await _player.playBytes(
+        response.outputAudioBytes,
+        mimeType: response.outputAudioMimeType,
+      );
+
+      _state = _state.copyWith(
+        status: VoiceTurnStatus.responseReady,
+        playback: _state.playback.copyWith(status: VoicePlaybackStatus.completed),
+      );
+      notifyListeners();
+    } catch (_) {
+      _state = _state.copyWith(
+        status: VoiceTurnStatus.error,
+        errorMessage: 'No fue posible reproducir nuevamente la respuesta.',
       );
       notifyListeners();
     }
@@ -204,7 +287,13 @@ class VoiceTurnController extends ChangeNotifier {
       notifyListeners();
 
       final VoiceTurnResponse response = await _repository.sendVoiceTurn(
-        VoiceTurnRequest(inputAudio: audioBytes),
+        VoiceTurnRequest(
+          inputAudio: audioBytes,
+          voiceProfile: _state.selectedVoiceProfile,
+          voiceStyleInstructions: _state.selectedVoiceProfile.styleInstructions,
+          voiceRate: _suggestedRateForProfile(_state.selectedVoiceProfile),
+          voiceIntent: _intentForProfile(_state.selectedVoiceProfile),
+        ),
       );
 
       _state = _state.copyWith(
@@ -214,23 +303,15 @@ class VoiceTurnController extends ChangeNotifier {
       );
       notifyListeners();
 
-      if (response.outputAudioBytes.isNotEmpty) {
+      if (_state.autoplayEnabled && response.outputAudioBytes.isNotEmpty) {
+        await replayLastResponse();
+      } else {
         _state = _state.copyWith(
-          status: VoiceTurnStatus.playingAudio,
-          playback: _state.playback.copyWith(status: VoicePlaybackStatus.playing),
+          status: VoiceTurnStatus.responseReady,
+          playback: _state.playback.copyWith(status: VoicePlaybackStatus.completed),
         );
         notifyListeners();
-        await _player.playBytes(
-          response.outputAudioBytes,
-          mimeType: response.outputAudioMimeType,
-        );
       }
-
-      _state = _state.copyWith(
-        status: VoiceTurnStatus.responseReady,
-        playback: _state.playback.copyWith(status: VoicePlaybackStatus.completed),
-      );
-      notifyListeners();
     } catch (_) {
       _state = _state.copyWith(
         status: VoiceTurnStatus.error,
@@ -256,6 +337,34 @@ class VoiceTurnController extends ChangeNotifier {
   void clearError() {
     _state = _state.copyWith(clearErrorMessage: true);
     notifyListeners();
+  }
+
+  double _suggestedRateForProfile(VoiceProfile profile) {
+    switch (profile.id) {
+      case 'energetic':
+        return 1.08;
+      case 'calm':
+        return 0.92;
+      case 'professional':
+        return 1.0;
+      case 'warm':
+      default:
+        return 0.98;
+    }
+  }
+
+  String _intentForProfile(VoiceProfile profile) {
+    switch (profile.id) {
+      case 'energetic':
+        return 'motivational';
+      case 'calm':
+        return 'reassuring';
+      case 'professional':
+        return 'structured';
+      case 'warm':
+      default:
+        return 'friendly';
+    }
   }
 
   @override

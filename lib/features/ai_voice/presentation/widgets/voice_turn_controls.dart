@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/voice_turn_controller.dart';
 import '../../application/voice_turn_state.dart';
+import '../../domain/models/voice_turn_models.dart';
 import '../controllers/ai_voice_providers.dart';
 
 class VoiceTurnControls extends ConsumerWidget {
@@ -19,13 +20,48 @@ class VoiceTurnControls extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text('Voz (PTT por turnos)', style: Theme.of(context).textTheme.titleSmall),
+            Text('Voz V2 (turnos)', style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: 6),
             Text(
-              'Push-to-talk en turnos: mantén pulsado para grabar y suelta para enviar.',
+              'Habla por turnos, recibe respuesta con perfil de voz y reproduce de nuevo cuando quieras.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 10),
+            DropdownButtonFormField<String>(
+              value: state.selectedVoiceProfile.id,
+              decoration: const InputDecoration(
+                labelText: 'Perfil de voz',
+                prefixIcon: Icon(Icons.record_voice_over_rounded),
+              ),
+              items: state.availableProfiles
+                  .map(
+                    (profile) => DropdownMenuItem<String>(
+                      value: profile.id,
+                      child: Text('${profile.label} • ${profile.description ?? ''}'),
+                    ),
+                  )
+                  .toList(growable: false),
+              onChanged: (String? id) {
+                if (id == null) {
+                  return;
+                }
+
+                final selected = state.availableProfiles.firstWhere(
+                  (profile) => profile.id == id,
+                  orElse: () => state.selectedVoiceProfile,
+                );
+                controller.setVoiceProfile(selected);
+              },
+            ),
+            const SizedBox(height: 8),
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Reproducir automáticamente la respuesta'),
+              subtitle: const Text('Si está apagado, podrás escuchar manualmente con "Reproducir".'),
+              value: state.autoplayEnabled,
+              onChanged: controller.setAutoplayEnabled,
+            ),
+            const SizedBox(height: 8),
             GestureDetector(
               onLongPressStart: (_) => controller.startRecording(),
               onLongPressEnd: (_) => controller.stopRecording(),
@@ -36,8 +72,8 @@ class VoiceTurnControls extends ConsumerWidget {
                   onPressed: state.isBusy ? null : () => controller.startRecording(),
                   icon: Icon(
                     state.status == VoiceTurnStatus.recording
-                        ? Icons.mic
-                        : Icons.mic_none_rounded,
+                        ? Icons.graphic_eq_rounded
+                        : Icons.keyboard_voice_rounded,
                   ),
                   label: Text(
                     state.status == VoiceTurnStatus.recording
@@ -71,7 +107,12 @@ class VoiceTurnControls extends ConsumerWidget {
                       ? null
                       : () => controller.retryLastTurn(),
                   icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('Reintentar'),
+                  label: const Text('Reintentar turno'),
+                ),
+                TextButton.icon(
+                  onPressed: state.lastResponse == null ? null : () => controller.replayLastResponse(),
+                  icon: const Icon(Icons.replay_rounded),
+                  label: const Text('Reproducir respuesta'),
                 ),
                 TextButton.icon(
                   onPressed: () => controller.stopPlayback(),
@@ -81,38 +122,45 @@ class VoiceTurnControls extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 8),
-            Text('Estado: ${_statusLabel(state.status)}'),
-            if (state.recording.localFilePath != null) ...<Widget>[
-              const SizedBox(height: 4),
-              Text(
-                'Audio temporal: ${state.recording.localFilePath}',
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall,
+            _StatusChip(status: state.status),
+            if (state.status == VoiceTurnStatus.processingBackend ||
+                state.status == VoiceTurnStatus.uploading)
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: LinearProgressIndicator(minHeight: 4),
               ),
-            ],
             if (state.lastResponse != null) ...<Widget>[
-              const SizedBox(height: 6),
+              const SizedBox(height: 10),
+              Text(
+                'Última respuesta (${state.lastResponse!.voiceProfileUsed})',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: 4),
               Text(
                 'Transcript: ${state.lastResponse!.userTranscript.isEmpty ? '(sin transcript)' : state.lastResponse!.userTranscript}',
               ),
+              const SizedBox(height: 4),
+              Text('Coach: ${state.lastResponse!.assistantText}'),
+            ],
+            if (state.history.isNotEmpty) ...<Widget>[
+              const SizedBox(height: 12),
+              Text('Historial de voz', style: Theme.of(context).textTheme.titleSmall),
               const SizedBox(height: 6),
-              Text(
-                'Coach: ${state.lastResponse!.assistantText}',
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Metadata: request=${state.lastResponse!.metadata.requestId}, '
-                'provider=${state.lastResponse!.metadata.provider}, '
-                'model=${state.lastResponse!.metadata.model}',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
+              ...state.history.take(3).map(_HistoryItem.new),
             ],
             if (state.errorMessage != null) ...<Widget>[
-              const SizedBox(height: 6),
-              Text(
-                state.errorMessage!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.errorContainer,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  state.errorMessage!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
+                ),
               ),
             ],
           ],
@@ -120,25 +168,59 @@ class VoiceTurnControls extends ConsumerWidget {
       ),
     );
   }
+}
 
-  String _statusLabel(VoiceTurnStatus status) {
-    switch (status) {
-      case VoiceTurnStatus.idle:
-        return 'idle';
-      case VoiceTurnStatus.requestingPermission:
-        return 'requesting_permission';
-      case VoiceTurnStatus.recording:
-        return 'recording';
-      case VoiceTurnStatus.uploading:
-        return 'uploading_audio';
-      case VoiceTurnStatus.processingBackend:
-        return 'processing_backend';
-      case VoiceTurnStatus.responseReady:
-        return 'response_ready';
-      case VoiceTurnStatus.playingAudio:
-        return 'playing_audio';
-      case VoiceTurnStatus.error:
-        return 'error';
-    }
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({required this.status});
+
+  final VoiceTurnStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final (String label, IconData icon) = switch (status) {
+      VoiceTurnStatus.idle => ('Listo', Icons.check_circle_outline_rounded),
+      VoiceTurnStatus.requestingPermission => ('Pidiendo permiso', Icons.lock_open_rounded),
+      VoiceTurnStatus.recording => ('Grabando', Icons.mic_rounded),
+      VoiceTurnStatus.uploading => ('Subiendo audio', Icons.cloud_upload_rounded),
+      VoiceTurnStatus.processingBackend => ('Procesando respuesta', Icons.psychology_rounded),
+      VoiceTurnStatus.responseReady => ('Respuesta lista', Icons.mark_chat_read_rounded),
+      VoiceTurnStatus.playingAudio => ('Reproduciendo', Icons.volume_up_rounded),
+      VoiceTurnStatus.error => ('Error', Icons.error_outline_rounded),
+    };
+
+    return Chip(
+      avatar: Icon(icon, size: 16),
+      label: Text(label),
+    );
+  }
+}
+
+class _HistoryItem extends StatelessWidget {
+  const _HistoryItem(this.item);
+
+  final VoiceTurnHistoryItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              '${item.createdAt.toLocal()} • perfil ${item.voiceProfileUsed}',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 4),
+            Text('Audio enviado: ${item.inputAudioPath ?? 'n/a'}', maxLines: 1, overflow: TextOverflow.ellipsis),
+            Text('Transcript: ${item.userTranscript.isEmpty ? '(sin transcript)' : item.userTranscript}'),
+            Text('Respuesta: ${item.assistantText}', maxLines: 2, overflow: TextOverflow.ellipsis),
+            Text('Audio respuesta: ${item.outputAudioMimeType} (${item.outputAudioBytes.length} bytes)'),
+          ],
+        ),
+      ),
+    );
   }
 }

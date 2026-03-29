@@ -36,4 +36,51 @@ class VoiceProfile {
       isDefault: json['isDefault'] as bool? ?? false,
     );
   }
+
+  static const String defaultId = 'coach_default';
+
+  static List<VoiceProfile> presets() {
+    return const <VoiceProfile>[
+      VoiceProfile(
+        id: 'warm',
+        label: 'Cálida',
+        locale: 'es-ES',
+        description: 'Cercana, empática y conversacional.',
+        styleInstructions:
+            'Responde con una voz cálida, amable y cercana. Mantén claridad, ritmo natural y apoyo emocional.',
+        isDefault: true,
+      ),
+      VoiceProfile(
+        id: 'energetic',
+        label: 'Energética',
+        locale: 'es-ES',
+        description: 'Activa, motivante y con mayor dinamismo.',
+        styleInstructions:
+            'Responde con energía positiva, tono motivador y frases breves de impulso, sin sonar agresivo.',
+      ),
+      VoiceProfile(
+        id: 'calm',
+        label: 'Calmada',
+        locale: 'es-ES',
+        description: 'Serena, pausada y tranquilizadora.',
+        styleInstructions:
+            'Responde en tono sereno y pausado, con lenguaje simple, respirable y orientado a reducir estrés.',
+      ),
+      VoiceProfile(
+        id: 'professional',
+        label: 'Profesional',
+        locale: 'es-ES',
+        description: 'Directa, estructurada y formal.',
+        styleInstructions:
+            'Responde con tono profesional, claro y estructurado, priorizando precisión y acciones concretas.',
+      ),
+    ];
+  }
+
+  static VoiceProfile fallback() {
+    return presets().firstWhere(
+      (VoiceProfile profile) => profile.isDefault,
+      orElse: () => presets().first,
+    );
+  }
 }

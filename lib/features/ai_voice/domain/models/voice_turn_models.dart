@@ -11,6 +11,8 @@ class VoiceTurnRequest {
     this.userContext,
     this.voiceProfile,
     this.voiceStyleInstructions,
+    this.voiceRate,
+    this.voiceIntent,
     this.turnId,
     this.conversationId,
     this.locale,
@@ -22,6 +24,8 @@ class VoiceTurnRequest {
   final VoiceUserContext? userContext;
   final VoiceProfile? voiceProfile;
   final String? voiceStyleInstructions;
+  final double? voiceRate;
+  final String? voiceIntent;
   final String? turnId;
   final String? conversationId;
   final String? locale;
@@ -46,9 +50,17 @@ class VoiceTurnRequest {
               },
             ],
         },
-      if (voiceProfile != null || voiceStyleInstructions != null)
+      if (
+        voiceProfile != null ||
+        voiceStyleInstructions != null ||
+        voiceRate != null ||
+        voiceIntent != null
+      )
         'voice': <String, dynamic>{
           if (voiceProfile?.id != null) 'profileId': voiceProfile!.id,
+          if (voiceStyleInstructions != null) 'styleInstructions': voiceStyleInstructions,
+          if (voiceRate != null) 'rate': voiceRate,
+          if (voiceIntent != null) 'intent': voiceIntent,
           'format': 'mp3',
         },
     };
@@ -108,6 +120,26 @@ class VoiceTurnResponse {
 
     return base64Decode(outputAudioBase64);
   }
+}
+
+class VoiceTurnHistoryItem {
+  const VoiceTurnHistoryItem({
+    required this.createdAt,
+    required this.inputAudioPath,
+    required this.userTranscript,
+    required this.assistantText,
+    required this.voiceProfileUsed,
+    required this.outputAudioBytes,
+    required this.outputAudioMimeType,
+  });
+
+  final DateTime createdAt;
+  final String? inputAudioPath;
+  final String userTranscript;
+  final String assistantText;
+  final String voiceProfileUsed;
+  final List<int> outputAudioBytes;
+  final String outputAudioMimeType;
 }
 
 class VoiceTurnMetadata {

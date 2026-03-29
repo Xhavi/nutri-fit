@@ -26,6 +26,9 @@ export interface VoiceConversationContext {
 export interface VoiceOutputPreferences {
   profileId?: string;
   format?: 'mp3' | 'wav';
+  styleInstructions?: string;
+  rate?: number;
+  intent?: string;
 }
 
 export interface VoiceTurnRequest {

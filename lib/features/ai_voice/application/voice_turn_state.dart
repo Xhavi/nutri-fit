@@ -1,6 +1,7 @@
 import '../domain/models/voice_playback_state.dart';
 import '../domain/models/voice_recording_state.dart';
 import '../domain/models/voice_turn_models.dart';
+import '../domain/models/voice_profile.dart';
 
 enum VoiceTurnStatus {
   idle,
@@ -19,6 +20,10 @@ class VoiceTurnState {
     required this.recording,
     required this.playback,
     this.lastResponse,
+    required this.selectedVoiceProfile,
+    required this.availableProfiles,
+    required this.autoplayEnabled,
+    required this.history,
     this.errorMessage,
   });
 
@@ -26,6 +31,10 @@ class VoiceTurnState {
   final VoiceRecordingState recording;
   final VoicePlaybackState playback;
   final VoiceTurnResponse? lastResponse;
+  final VoiceProfile selectedVoiceProfile;
+  final List<VoiceProfile> availableProfiles;
+  final bool autoplayEnabled;
+  final List<VoiceTurnHistoryItem> history;
   final String? errorMessage;
 
   bool get isBusy =>
@@ -39,6 +48,10 @@ class VoiceTurnState {
     VoiceRecordingState? recording,
     VoicePlaybackState? playback,
     VoiceTurnResponse? lastResponse,
+    VoiceProfile? selectedVoiceProfile,
+    List<VoiceProfile>? availableProfiles,
+    bool? autoplayEnabled,
+    List<VoiceTurnHistoryItem>? history,
     String? errorMessage,
     bool clearLastResponse = false,
     bool clearErrorMessage = false,
@@ -48,6 +61,10 @@ class VoiceTurnState {
       recording: recording ?? this.recording,
       playback: playback ?? this.playback,
       lastResponse: clearLastResponse ? null : (lastResponse ?? this.lastResponse),
+      selectedVoiceProfile: selectedVoiceProfile ?? this.selectedVoiceProfile,
+      availableProfiles: availableProfiles ?? this.availableProfiles,
+      autoplayEnabled: autoplayEnabled ?? this.autoplayEnabled,
+      history: history ?? this.history,
       errorMessage: clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
     );
   }
@@ -57,6 +74,10 @@ class VoiceTurnState {
       status: VoiceTurnStatus.idle,
       recording: VoiceRecordingState.initial(),
       playback: VoicePlaybackState.initial(),
+      selectedVoiceProfile: VoiceProfile.fallback(),
+      availableProfiles: VoiceProfile.presets(),
+      autoplayEnabled: true,
+      history: const <VoiceTurnHistoryItem>[],
     );
   }
 }

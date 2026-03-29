@@ -56,6 +56,18 @@ export function validateVoiceTurnRequest(input: unknown): VoiceTurnRequest {
   if (voiceRaw?.format != null && voiceRaw.format !== 'mp3' && voiceRaw.format !== 'wav') {
     throw new AppError('invalid-argument', 'voice.format must be mp3 or wav.');
   }
+  if (voiceRaw?.styleInstructions != null && typeof voiceRaw.styleInstructions !== 'string') {
+    throw new AppError('invalid-argument', 'voice.styleInstructions must be a string.');
+  }
+  if (voiceRaw?.intent != null && typeof voiceRaw.intent !== 'string') {
+    throw new AppError('invalid-argument', 'voice.intent must be a string.');
+  }
+  if (
+    voiceRaw?.rate != null &&
+    (typeof voiceRaw.rate !== 'number' || Number.isNaN(voiceRaw.rate) || voiceRaw.rate <= 0)
+  ) {
+    throw new AppError('invalid-argument', 'voice.rate must be a positive number.');
+  }
 
   return {
     audio: {
@@ -69,6 +81,10 @@ export function validateVoiceTurnRequest(input: unknown): VoiceTurnRequest {
     voice: {
       format: (voiceRaw?.format as 'mp3' | 'wav' | undefined) ?? 'mp3',
       profileId: typeof voiceRaw?.profileId === 'string' ? voiceRaw.profileId : 'coach_default',
+      styleInstructions:
+        typeof voiceRaw?.styleInstructions === 'string' ? voiceRaw.styleInstructions : undefined,
+      intent: typeof voiceRaw?.intent === 'string' ? voiceRaw.intent : undefined,
+      rate: typeof voiceRaw?.rate === 'number' ? voiceRaw.rate : undefined,
     },
   };
 }
