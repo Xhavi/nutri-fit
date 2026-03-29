@@ -239,15 +239,6 @@ class AiCoachController extends ChangeNotifier {
   }
 
   String _mealTypeLabel(MealType mealType) {
-    switch (mealType) {
-      case MealType.breakfast:
-        return 'Desayuno';
-      case MealType.lunch:
-        return 'Almuerzo';
-      case MealType.dinner:
-        return 'Cena';
-      case MealType.snack:
-        return 'Snack';
-    }
+    return mealType.label;
   }
 }

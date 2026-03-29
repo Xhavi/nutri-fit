@@ -14,7 +14,7 @@ class AiCoachMessageBubble extends StatelessWidget {
 
     final ColorScheme colors = Theme.of(context).colorScheme;
     final Color background =
-        isSystem ? colors.surfaceVariant : (isUser ? colors.primary : colors.surface);
+        isSystem ? colors.surfaceContainerHighest : (isUser ? colors.primary : colors.surface);
     final Color textColor = isUser ? colors.onPrimary : colors.onSurface;
 
     return Align(

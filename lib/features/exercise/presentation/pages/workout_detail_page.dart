@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../domain/enums/exercise_category.dart';
+import '../../domain/enums/exercise_intensity.dart';
 import '../../domain/entities/workout.dart';
 
 class WorkoutDetailPage extends StatelessWidget {

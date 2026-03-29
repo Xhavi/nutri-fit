@@ -214,7 +214,7 @@ class _EditHealthProfilePageState extends State<EditHealthProfilePage> {
     required ValueChanged<T> onChanged,
   }) {
     return DropdownButtonFormField<T>(
-      value: value,
+      initialValue: value,
       items: values
           .map(
             (T item) => DropdownMenuItem<T>(

@@ -99,7 +99,7 @@ class _AddEditMealPageState extends ConsumerState<AddEditMealPage> {
           padding: const EdgeInsets.all(16),
           children: <Widget>[
             DropdownButtonFormField<MealType>(
-              value: _mealType,
+              initialValue: _mealType,
               decoration: const InputDecoration(labelText: 'Tipo de comida'),
               items: MealType.values
                   .map(

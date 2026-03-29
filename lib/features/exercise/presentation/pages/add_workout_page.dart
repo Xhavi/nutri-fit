@@ -74,7 +74,7 @@ class _AddWorkoutPageState extends State<AddWorkoutPage> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<ExerciseCategory>(
-                  value: _category,
+                  initialValue: _category,
                   decoration: const InputDecoration(labelText: 'Categoría'),
                   items: ExerciseCategory.values
                       .map(
@@ -93,7 +93,7 @@ class _AddWorkoutPageState extends State<AddWorkoutPage> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<ExerciseIntensity>(
-                  value: _intensity,
+                  initialValue: _intensity,
                   decoration: const InputDecoration(labelText: 'Intensidad'),
                   items: ExerciseIntensity.values
                       .map(

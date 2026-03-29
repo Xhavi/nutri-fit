@@ -6,7 +6,7 @@ import 'package:nutri_fit/features/exercise/domain/enums/exercise_intensity.dart
 
 void main() {
   test('calcula calorías estimadas y duración total del workout', () {
-    const Workout workout = Workout(
+    final Workout workout = Workout(
       id: 'w1',
       title: 'Test',
       date: DateTime(2026, 3, 27),
