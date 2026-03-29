@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../shared/layouts/internal_base_layout.dart';
+import '../../../ai_voice/presentation/widgets/voice_turn_controls.dart';
 import '../../domain/models/ai_coach_chat_message.dart';
 import '../controllers/ai_coach_providers.dart';
 import '../controllers/ai_coach_state.dart';
@@ -97,6 +98,8 @@ class _AiCoachPageState extends ConsumerState<AiCoachPage> {
             isSending: state.isSending,
             onSend: _sendMessage,
           ),
+          const SizedBox(height: 8),
+          const VoiceTurnControls(),
         ],
       ),
     );
