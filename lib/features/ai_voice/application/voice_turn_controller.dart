@@ -253,17 +253,25 @@ class VoiceTurnController extends ChangeNotifier {
       return;
     }
 
-    await _recorder.cancelRecording();
-    _state = _state.copyWith(
-      status: VoiceTurnStatus.idle,
-      recording: _state.recording.copyWith(
-        status: VoiceRecordingStatus.idle,
-        elapsed: Duration.zero,
-        clearLocalFilePath: true,
-      ),
-      clearErrorMessage: true,
-      clearLastResponse: true,
-    );
+    try {
+      await _recorder.cancelRecording();
+      _state = _state.copyWith(
+        status: VoiceTurnStatus.idle,
+        recording: _state.recording.copyWith(
+          status: VoiceRecordingStatus.idle,
+          elapsed: Duration.zero,
+          clearLocalFilePath: true,
+        ),
+        clearErrorMessage: true,
+        clearLastResponse: true,
+      );
+    } catch (_) {
+      _state = _state.copyWith(
+        status: VoiceTurnStatus.error,
+        errorMessage: 'No fue posible cancelar la grabación actual.',
+      );
+    }
+
     notifyListeners();
   }
 
@@ -299,6 +307,18 @@ class VoiceTurnController extends ChangeNotifier {
       _state = _state.copyWith(
         status: VoiceTurnStatus.responseReady,
         lastResponse: response,
+        history: <VoiceTurnHistoryItem>[
+          VoiceTurnHistoryItem(
+            createdAt: DateTime.now(),
+            inputAudioPath: path,
+            userTranscript: response.userTranscript,
+            assistantText: response.assistantText,
+            voiceProfileUsed: response.voiceProfileUsed,
+            outputAudioBytes: response.outputAudioBytes,
+            outputAudioMimeType: response.outputAudioMimeType,
+          ),
+          ..._state.history,
+        ],
         playback: _state.playback.copyWith(status: VoicePlaybackStatus.preparing),
       );
       notifyListeners();
@@ -325,7 +345,7 @@ class VoiceTurnController extends ChangeNotifier {
     await _player.stop();
 
     _state = _state.copyWith(
-      status: VoiceTurnStatus.idle,
+      status: _state.lastResponse == null ? VoiceTurnStatus.idle : VoiceTurnStatus.responseReady,
       playback: _state.playback.copyWith(
         status: VoicePlaybackStatus.idle,
         position: Duration.zero,
