@@ -15,6 +15,7 @@ import '../../features/onboarding/presentation/pages/onboarding_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/progress/presentation/pages/progress_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
+import '../../features/subscriptions/presentation/pages/paywall_page.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
 
 class AppRoutePaths {
@@ -33,6 +34,7 @@ class AppRoutePaths {
   static const String aiCoach = '/ai-coach';
   static const String profile = '/profile';
   static const String settings = '/settings';
+  static const String paywall = '/paywall';
 }
 
 final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((Ref ref) {
@@ -101,6 +103,11 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((Ref ref) {
         path: AppRoutePaths.settings,
         name: 'settings',
         builder: (BuildContext context, GoRouterState state) => const SettingsPage(),
+      ),
+      GoRoute(
+        path: AppRoutePaths.paywall,
+        name: 'paywall',
+        builder: (BuildContext context, GoRouterState state) => const PaywallPage(),
       ),
     ],
     redirect: (BuildContext context, GoRouterState state) {
