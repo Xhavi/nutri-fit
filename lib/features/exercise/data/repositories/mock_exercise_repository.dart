@@ -1,5 +1,7 @@
 import 'package:uuid/uuid.dart';
 
+import 'package:nutri_fit/core/utils/date_time_utils.dart';
+
 import '../../domain/entities/activity_entry.dart';
 import '../../domain/entities/exercise_entry.dart';
 import '../../domain/entities/workout.dart';
@@ -10,7 +12,7 @@ import '../../domain/repositories/exercise_repository.dart';
 class MockExerciseRepository implements ExerciseRepository {
   MockExerciseRepository() {
     final DateTime now = DateTime.now();
-    final DateTime today = DateTime(now.year, now.month, now.day);
+    final DateTime today = DateTimeUtils.normalizeDate(now);
 
     _workouts = <Workout>[
       Workout(
@@ -116,5 +118,5 @@ class MockExerciseRepository implements ExerciseRepository {
         .toList();
   }
 
-  DateTime _normalizeDate(DateTime date) => DateTime(date.year, date.month, date.day);
+  DateTime _normalizeDate(DateTime date) => DateTimeUtils.normalizeDate(date);
 }

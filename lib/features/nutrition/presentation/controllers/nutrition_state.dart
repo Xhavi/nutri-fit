@@ -1,3 +1,5 @@
+import 'package:nutri_fit/core/utils/date_time_utils.dart';
+
 import '../../domain/entities/daily_nutrition_summary.dart';
 import '../../domain/entities/food_item.dart';
 import '../../domain/entities/meal_entry.dart';
@@ -42,7 +44,7 @@ class NutritionState {
   factory NutritionState.initial() {
     final DateTime now = DateTime.now();
     return NutritionState(
-      selectedDate: DateTime(now.year, now.month, now.day),
+      selectedDate: DateTimeUtils.normalizeDate(now),
       entries: const <MealEntry>[],
       waterMl: 0,
       foodSearchResults: const <FoodItem>[],

@@ -1,3 +1,5 @@
+import 'package:nutri_fit/core/utils/date_time_utils.dart';
+
 import '../../domain/entities/workout.dart';
 import '../../domain/repositories/exercise_repository.dart';
 
@@ -38,7 +40,7 @@ class ExerciseState {
 
   factory ExerciseState.initial() {
     final DateTime now = DateTime.now();
-    final DateTime today = DateTime(now.year, now.month, now.day);
+    final DateTime today = DateTimeUtils.normalizeDate(now);
     return ExerciseState(
       selectedDate: today,
       dailyWorkouts: const <Workout>[],

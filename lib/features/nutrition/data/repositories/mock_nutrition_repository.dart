@@ -1,5 +1,7 @@
 import 'package:uuid/uuid.dart';
 
+import 'package:nutri_fit/core/utils/date_time_utils.dart';
+
 import '../../domain/entities/food_item.dart';
 import '../../domain/entities/meal_entry.dart';
 import '../../domain/enums/meal_type.dart';
@@ -8,7 +10,7 @@ import '../../domain/repositories/nutrition_repository.dart';
 class MockNutritionRepository implements NutritionRepository {
   MockNutritionRepository() {
     final DateTime now = DateTime.now();
-    final DateTime today = DateTime(now.year, now.month, now.day);
+    final DateTime today = DateTimeUtils.normalizeDate(now);
 
     _entries = <MealEntry>[
       MealEntry(
@@ -87,9 +89,9 @@ class MockNutritionRepository implements NutritionRepository {
         .toList();
   }
 
-  String _toDateKey(DateTime date) => '${date.year}-${date.month}-${date.day}';
+  String _toDateKey(DateTime date) => DateTimeUtils.formatIsoDate(date);
 
   bool _isSameDate(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
+    return DateTimeUtils.normalizeDate(a) == DateTimeUtils.normalizeDate(b);
   }
 }
