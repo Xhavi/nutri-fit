@@ -1,12 +1,24 @@
 # Screenshot evidence
 
-This folder is reserved for manual functional testing screenshots.
+This folder stores curated PNG evidence from manual Android QA runs.
 
-Expected naming convention:
-- `01-welcome.png`
-- `02-login.png`
-- `03-onboarding-step-1.png`
-- etc.
+## What is committed
+- Final PNG screenshots that document meaningful app states and bugs.
 
-Status for this run (2026-03-29):
-- No screenshots were generated because the Flutter SDK/runtime is not available in the execution environment.
+## What is not committed
+- Temporary UI dump XML files.
+- Intermediate operator artifacts that were only used to calculate tap coordinates during emulator QA.
+
+## Current evidence set
+- Initial auth/onboarding flow
+- Nutrition CRUD flow
+- Exercise crash-before-fix and dashboard-after-fix
+- Progress screen
+- AI Coach empty state and response state
+- Profile, goals review empty state, profile save, and goals review calculated state
+- Settings sign-out state
+- Login screen and post-login onboarding regression evidence
+
+## Notes
+- XML UI dumps are ignored through `.gitignore` with `docs/screenshots/*.xml`.
+- Emulator screenshots were captured with `adb shell screencap -p` plus `adb pull` to avoid PNG corruption on Windows shell redirection.

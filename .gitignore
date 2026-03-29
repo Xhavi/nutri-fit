@@ -10,6 +10,7 @@ coverage/
 .flutter-plugins
 .flutter-plugins-dependencies
 .metadata
+devtools_options.yaml
 
 # IDE
 .idea/
@@ -21,6 +22,9 @@ coverage/
 
 # Logs
 *.log
+
+# QA evidence temp dumps
+docs/screenshots/*.xml
 
 # Firebase local artifacts
 .firebase/
