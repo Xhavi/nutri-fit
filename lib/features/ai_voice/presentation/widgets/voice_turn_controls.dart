@@ -94,11 +94,18 @@ class VoiceTurnControls extends ConsumerWidget {
             if (state.lastResponse != null) ...<Widget>[
               const SizedBox(height: 6),
               Text(
-                'Transcript: ${state.lastResponse!.transcription?.text ?? '(sin transcript)'}',
+                'Transcript: ${state.lastResponse!.userTranscript.isEmpty ? '(sin transcript)' : state.lastResponse!.userTranscript}',
               ),
               const SizedBox(height: 6),
               Text(
                 'Coach: ${state.lastResponse!.assistantText}',
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Metadata: request=${state.lastResponse!.metadata.requestId}, '
+                'provider=${state.lastResponse!.metadata.provider}, '
+                'model=${state.lastResponse!.metadata.model}',
+                style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
             if (state.errorMessage != null) ...<Widget>[
@@ -122,10 +129,10 @@ class VoiceTurnControls extends ConsumerWidget {
         return 'requesting_permission';
       case VoiceTurnStatus.recording:
         return 'recording';
-      case VoiceTurnStatus.processing:
-        return 'processing';
-      case VoiceTurnStatus.transcriptReady:
-        return 'transcript_ready';
+      case VoiceTurnStatus.uploading:
+        return 'uploading_audio';
+      case VoiceTurnStatus.processingBackend:
+        return 'processing_backend';
       case VoiceTurnStatus.responseReady:
         return 'response_ready';
       case VoiceTurnStatus.playingAudio:

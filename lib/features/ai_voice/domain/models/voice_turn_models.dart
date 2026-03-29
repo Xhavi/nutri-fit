@@ -28,15 +28,29 @@ class VoiceTurnRequest {
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
-      'inputAudioBase64': base64Encode(inputAudio),
-      'audioMimeType': audioMimeType,
-      if (transcript != null) 'transcript': transcript,
-      if (userContext != null) 'userContext': userContext!.toJson(),
-      if (voiceProfile != null) 'voiceProfile': voiceProfile!.toJson(),
-      if (voiceStyleInstructions != null) 'voiceStyleInstructions': voiceStyleInstructions,
-      if (turnId != null) 'turnId': turnId,
-      if (conversationId != null) 'conversationId': conversationId,
-      if (locale != null) 'locale': locale,
+      'audio': <String, dynamic>{
+        'base64': base64Encode(inputAudio),
+        'mimeType': audioMimeType,
+        'filename': 'voice_turn.m4a',
+      },
+      if (locale != null) 'metadata': <String, dynamic>{'locale': locale},
+      if (userContext != null) 'context': userContext!.toContextJson(),
+      if (conversationId != null || turnId != null || transcript != null)
+        'conversation': <String, dynamic>{
+          if (conversationId != null) 'conversationId': conversationId,
+          if (transcript != null)
+            'recentTurns': <Map<String, String>>[
+              <String, String>{
+                'userText': transcript!,
+                'assistantText': 'pending',
+              },
+            ],
+        },
+      if (voiceProfile != null || voiceStyleInstructions != null)
+        'voice': <String, dynamic>{
+          if (voiceProfile?.id != null) 'profileId': voiceProfile!.id,
+          'format': 'mp3',
+        },
     };
   }
 }
@@ -44,29 +58,46 @@ class VoiceTurnRequest {
 class VoiceTurnResponse {
   const VoiceTurnResponse({
     required this.assistantText,
-    required this.outputAudio,
+    required this.outputAudioBytes,
     required this.outputAudioMimeType,
+    required this.userTranscript,
+    required this.voiceProfileUsed,
     required this.metadata,
-    this.transcription,
+    this.safety,
   });
 
   final String assistantText;
-  final List<int> outputAudio;
+  final List<int> outputAudioBytes;
   final String outputAudioMimeType;
+  final String userTranscript;
+  final String voiceProfileUsed;
   final VoiceTurnMetadata metadata;
-  final TranscriptionResult? transcription;
+  final VoiceTurnSafety? safety;
+
+  TranscriptionResult? get transcription {
+    if (userTranscript.trim().isEmpty) {
+      return null;
+    }
+
+    return TranscriptionResult(text: userTranscript);
+  }
 
   factory VoiceTurnResponse.fromJson(Map<String, dynamic> json) {
+    final Map<String, dynamic> assistantAudio =
+        json['assistantAudio'] as Map<String, dynamic>? ?? const <String, dynamic>{};
+
     return VoiceTurnResponse(
       assistantText: json['assistantText'] as String? ?? '',
-      outputAudio: _decodeAudioBytes(json['outputAudioBase64'] as String?),
-      outputAudioMimeType: json['outputAudioMimeType'] as String? ?? 'audio/mpeg',
+      outputAudioBytes: _decodeAudioBytes(assistantAudio['base64'] as String?),
+      outputAudioMimeType: assistantAudio['mimeType'] as String? ?? 'audio/mpeg',
+      userTranscript: json['userTranscript'] as String? ?? '',
+      voiceProfileUsed: json['voiceProfileUsed'] as String? ?? 'coach_default',
       metadata: VoiceTurnMetadata.fromJson(
-        json['metadata'] as Map<String, dynamic>? ?? const <String, dynamic>{},
+        json['meta'] as Map<String, dynamic>? ?? const <String, dynamic>{},
       ),
-      transcription: json['transcription'] == null
+      safety: json['safety'] == null
           ? null
-          : TranscriptionResult.fromJson(json['transcription'] as Map<String, dynamic>),
+          : VoiceTurnSafety.fromJson(json['safety'] as Map<String, dynamic>),
     );
   }
 
@@ -84,23 +115,26 @@ class VoiceTurnMetadata {
     required this.requestId,
     required this.provider,
     required this.model,
-    required this.turnMode,
-    required this.latencyMs,
+    required this.transcriptionModel,
+    required this.ttsModel,
+    this.locale,
   });
 
   final String requestId;
   final String provider;
   final String model;
-  final String turnMode;
-  final int latencyMs;
+  final String transcriptionModel;
+  final String ttsModel;
+  final String? locale;
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       'requestId': requestId,
       'provider': provider,
       'model': model,
-      'turnMode': turnMode,
-      'latencyMs': latencyMs,
+      'transcriptionModel': transcriptionModel,
+      'ttsModel': ttsModel,
+      if (locale != null) 'locale': locale,
     };
   }
 
@@ -109,8 +143,25 @@ class VoiceTurnMetadata {
       requestId: json['requestId'] as String? ?? '',
       provider: json['provider'] as String? ?? 'unknown',
       model: json['model'] as String? ?? 'unknown',
-      turnMode: json['turnMode'] as String? ?? 'ptt',
-      latencyMs: json['latencyMs'] as int? ?? 0,
+      transcriptionModel: json['transcriptionModel'] as String? ?? 'unknown',
+      ttsModel: json['ttsModel'] as String? ?? 'unknown',
+      locale: json['locale'] as String?,
+    );
+  }
+}
+
+class VoiceTurnSafety {
+  const VoiceTurnSafety({required this.disclaimer, this.flags = const <String>[]});
+
+  final String disclaimer;
+  final List<String> flags;
+
+  factory VoiceTurnSafety.fromJson(Map<String, dynamic> json) {
+    return VoiceTurnSafety(
+      disclaimer: json['disclaimer'] as String? ?? '',
+      flags: ((json['flags'] as List<dynamic>?) ?? const <dynamic>[])
+          .map((dynamic item) => item.toString())
+          .toList(growable: false),
     );
   }
 }
@@ -134,6 +185,13 @@ class VoiceUserContext {
       if (goal != null) 'goal': goal,
       if (locale != null) 'locale': locale,
       if (additional != null) 'additional': additional,
+    };
+  }
+
+  Map<String, dynamic> toContextJson() {
+    return <String, dynamic>{
+      if (goal != null) 'goal': <String, dynamic>{'description': goal},
+      if (additional != null) ...additional!,
     };
   }
 }

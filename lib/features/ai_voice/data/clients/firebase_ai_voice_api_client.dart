@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../../../../core/errors/app_exception.dart';
 import '../../../../core/services/functions/functions_service.dart';
 import '../../domain/models/voice_turn_models.dart';
@@ -11,15 +13,25 @@ class FirebaseAiVoiceApiClient implements AiVoiceApiClient {
 
   @override
   Future<VoiceTurnResponse> sendVoiceTurn(VoiceTurnRequest request) async {
-    final Map<String, dynamic>? response = await _functionsService.call(
-      'aiVoiceTurn',
-      payload: request.toJson(),
-    );
+    try {
+      final Map<String, dynamic>? response = await _functionsService
+          .call(
+            'voiceTurn',
+            payload: request.toJson(),
+          )
+          .timeout(const Duration(seconds: 60));
 
-    if (response == null) {
-      throw AppException('El backend de voz devolvió una respuesta vacía.');
+      if (response == null) {
+        throw AppException('El backend de voz devolvió una respuesta vacía.');
+      }
+
+      return VoiceTurnResponse.fromJson(response);
+    } on TimeoutException {
+      throw AppException(
+        'La solicitud de voz excedió el tiempo de espera. Intenta nuevamente.',
+      );
+    } catch (error) {
+      throw AppException('Error de red/backend en voiceTurn: $error');
     }
-
-    return VoiceTurnResponse.fromJson(response);
   }
 }

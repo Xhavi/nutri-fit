@@ -6,8 +6,8 @@ enum VoiceTurnStatus {
   idle,
   requestingPermission,
   recording,
-  processing,
-  transcriptReady,
+  uploading,
+  processingBackend,
   responseReady,
   playingAudio,
   error,
@@ -30,7 +30,8 @@ class VoiceTurnState {
 
   bool get isBusy =>
       status == VoiceTurnStatus.requestingPermission ||
-      status == VoiceTurnStatus.processing ||
+      status == VoiceTurnStatus.uploading ||
+      status == VoiceTurnStatus.processingBackend ||
       recording.isBusy;
 
   VoiceTurnState copyWith({

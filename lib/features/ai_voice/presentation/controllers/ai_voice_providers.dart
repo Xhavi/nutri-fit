@@ -15,7 +15,7 @@ import '../../domain/contracts/audio_recorder.dart';
 import '../../domain/repositories/ai_voice_repository.dart';
 
 final Provider<bool> aiVoiceForceMockProvider = Provider<bool>((Ref ref) {
-  return const bool.fromEnvironment('AI_VOICE_USE_MOCK', defaultValue: true);
+  return const bool.fromEnvironment('AI_VOICE_USE_MOCK', defaultValue: false);
 });
 
 final Provider<bool> useAiVoiceMockProvider = Provider<bool>((Ref ref) {
