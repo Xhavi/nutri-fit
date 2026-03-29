@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
+import 'package:nutri_fit/core/utils/date_time_utils.dart';
+
 import '../../domain/entities/activity_entry.dart';
 import '../../domain/entities/exercise_entry.dart';
 import '../../domain/entities/workout.dart';
@@ -23,7 +25,7 @@ class ExerciseController extends ChangeNotifier {
   }
 
   Future<void> loadForDate(DateTime date) async {
-    final DateTime normalizedDate = DateTime(date.year, date.month, date.day);
+    final DateTime normalizedDate = DateTimeUtils.normalizeDate(date);
     _state = _state.copyWith(isLoading: true, selectedDate: normalizedDate);
     notifyListeners();
 
@@ -54,7 +56,7 @@ class ExerciseController extends ChangeNotifier {
     final Workout workout = Workout(
       id: _uuid.v4(),
       title: title,
-      date: DateTime(date.year, date.month, date.day),
+      date: DateTimeUtils.normalizeDate(date),
       exercises: <ExerciseEntry>[
         ExerciseEntry(
           name: title,

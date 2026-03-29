@@ -1,109 +1,71 @@
 # NutriFit
 
-Mobile app (Flutter/Dart) for nutrition, exercise, and AI wellness coaching.
+Mobile app (Flutter/Dart) for nutrition, exercise, progress tracking, and AI wellness coaching.
 
-## Project vision
-NutriFit helps people build sustainable healthy habits by unifying food tracking, exercise tracking, progress visibility, and conversational AI coaching in a single experience.
+> **Safety boundary:** NutriFit is a wellness product and must not be positioned as medical diagnosis or treatment.
 
-> Important: NutriFit is a wellness product and **must not** be positioned as medical diagnosis or treatment.
+## Tech stack
+- Flutter + Dart (null-safe)
+- Feature-first architecture
+- Firebase-ready app bootstrap with mock-friendly local mode
+- Firebase Functions (TypeScript) for AI/backend orchestration
 
-## Core stack
-- **Frontend:** Flutter (Dart)
-- **Architecture approach:** Feature-first, modular, clean-code oriented
-- **Backend integration:** Firebase-ready core with environment-based configuration
-
-## Local setup
-
-### 1) Install dependencies
+## Quick start
 
 ```bash
 flutter pub get
-```
-
-### 2) Run in local mock mode (recommended for first run)
-
-```bash
 flutter run \
   --dart-define=APP_ENV=dev \
   --dart-define=FIREBASE_ENABLED=false \
   --dart-define=FIREBASE_USE_MOCKS=true
 ```
 
-### 3) Quality checks
+## Quality checks
 
 ```bash
 flutter analyze
 flutter test
 ```
 
-## AI Coach backend (Firebase Functions)
-
-Server-side foundation is under `functions/` using TypeScript + Firebase Cloud Functions.
-
-### Local backend setup
+Backend/functions basic validation:
 
 ```bash
 cd functions
-npm install
+npm ci
 npm run build
 ```
 
-### Environment and secrets
+## CI
+GitHub Actions runs:
+- `flutter pub get`
+- `flutter analyze`
+- `flutter test`
+- Functions basic validation (`npm ci` + `npm run build`)
 
-The mobile app must never include the OpenAI API key. Configure it only on backend:
+Workflow file: `.github/workflows/ci.yml`.
 
-```bash
-firebase functions:secrets:set OPENAI_API_KEY
-firebase functions:params:set AI_COACH_PROVIDER=openai
-firebase functions:params:set OPENAI_MODEL=gpt-4.1-mini
-```
-
-For local/dev without credentials, keep mock mode:
-
-```bash
-firebase functions:params:set AI_COACH_PROVIDER=mock
-```
-
-### Deploy
-
-```bash
-firebase deploy --only functions
-```
-
-## Firebase and environments docs
-
-- Firebase setup guide: `docs/setup/firebase.md`
-- Environment configuration guide: `docs/setup/environments.md`
-- AI backend architecture: `docs/ai/architecture.md`
+## Documentation index
+- Local setup: `docs/setup/local-development.md`
+- Environment flags: `docs/setup/environments.md`
+- Firebase setup: `docs/setup/firebase.md`
+- Architecture overview: `docs/architecture/overview.md`
+- Architecture guide: `docs/architecture/guide.md`
+- Contribution guide: `CONTRIBUTING.md`
+- Product scope: `docs/product/scope.md`
+- Product vision: `docs/product/vision.md`
+- Roadmap: `docs/roadmap.md`
+- AI architecture: `docs/ai/architecture.md`
 - AI prompt strategy: `docs/ai/prompt-strategy.md`
 - AI safety rules: `docs/ai/safety-rules.md`
 
-## Expected repository structure
+## Repository layout
 ```text
 nutri-fit/
-  AGENTS.md
-  README.md
+  .github/workflows/
   docs/
-    architecture/
-      overview.md
-    ai/
-      architecture.md
-      prompt-strategy.md
-      safety-rules.md
-    product/
-      scope.md
-      vision.md
-    setup/
-      environments.md
-      firebase.md
-    roadmap.md
   functions/
-    src/
   lib/
-    core/
-    features/
-    shared/
+  test/
+  README.md
+  CONTRIBUTING.md
 ```
-
-## Current status
-The app includes a Firebase-ready bootstrap, environment separation, and mock adapters for Auth/Firestore/Cloud Functions while full authentication flows are still pending.

@@ -3,8 +3,9 @@
 .packages
 .pub/
 build/
+coverage/
 
-# Flutter specific
+# Flutter generated files
 **/generated_plugin_registrant.dart
 .flutter-plugins
 .flutter-plugins-dependencies
@@ -15,14 +16,19 @@ build/
 .vscode/
 *.iml
 
-# macOS
+# OS
 .DS_Store
 
 # Logs
 *.log
 
-# Firebase Functions
-functions/node_modules/
-functions/lib/
+# Firebase local artifacts
 .firebase/
 firebase-debug.log
+
+# Firebase Functions (Node)
+functions/node_modules/
+functions/lib/
+functions/.firebase/
+functions/.env
+functions/.env.*

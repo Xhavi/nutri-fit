@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
+import 'package:nutri_fit/core/utils/date_time_utils.dart';
+
 import '../../domain/entities/food_item.dart';
 import '../../domain/entities/meal_entry.dart';
 import '../../domain/enums/meal_type.dart';
@@ -21,7 +23,7 @@ class NutritionController extends ChangeNotifier {
   }
 
   Future<void> loadForDate(DateTime date) async {
-    final DateTime normalizedDate = DateTime(date.year, date.month, date.day);
+    final DateTime normalizedDate = DateTimeUtils.normalizeDate(date);
     _state = _state.copyWith(isLoading: true, selectedDate: normalizedDate);
     notifyListeners();
 
@@ -45,7 +47,7 @@ class NutritionController extends ChangeNotifier {
   }) async {
     final MealEntry entry = MealEntry(
       id: existingId ?? _uuid.v4(),
-      date: DateTime(date.year, date.month, date.day),
+      date: DateTimeUtils.normalizeDate(date),
       mealType: mealType,
       foodItems: foodItems,
       notes: notes,
@@ -66,8 +68,9 @@ class NutritionController extends ChangeNotifier {
   }
 
   Future<void> setWater(int waterMl) async {
-    await _repository.setWaterForDate(date: _state.selectedDate, waterMl: waterMl);
-    _state = _state.copyWith(waterMl: waterMl.clamp(0, 10000));
+    final int normalizedWater = waterMl.clamp(0, 10000);
+    await _repository.setWaterForDate(date: _state.selectedDate, waterMl: normalizedWater);
+    _state = _state.copyWith(waterMl: normalizedWater);
     notifyListeners();
   }
 
