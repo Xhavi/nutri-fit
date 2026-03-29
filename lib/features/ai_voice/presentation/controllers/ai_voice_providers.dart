@@ -8,8 +8,8 @@ import '../../data/clients/ai_voice_api_client.dart';
 import '../../data/clients/firebase_ai_voice_api_client.dart';
 import '../../data/clients/mock_ai_voice_api_client.dart';
 import '../../data/repositories/ai_voice_repository_impl.dart';
-import '../../data/services/noop_audio_player.dart';
-import '../../data/services/noop_audio_recorder.dart';
+import '../../data/services/flutter_audio_player.dart';
+import '../../data/services/flutter_audio_recorder.dart';
 import '../../domain/contracts/audio_player.dart';
 import '../../domain/contracts/audio_recorder.dart';
 import '../../domain/repositories/ai_voice_repository.dart';
@@ -36,11 +36,11 @@ final Provider<AiVoiceRepository> aiVoiceRepositoryProvider = Provider<AiVoiceRe
 });
 
 final Provider<AudioRecorder> audioRecorderProvider = Provider<AudioRecorder>((Ref ref) {
-  return NoopAudioRecorder();
+  return FlutterAudioRecorder();
 });
 
 final Provider<AudioPlayer> audioPlayerProvider = Provider<AudioPlayer>((Ref ref) {
-  return NoopAudioPlayer();
+  return FlutterAudioPlayer();
 });
 
 final ChangeNotifierProvider<VoiceTurnController> voiceTurnControllerProvider =

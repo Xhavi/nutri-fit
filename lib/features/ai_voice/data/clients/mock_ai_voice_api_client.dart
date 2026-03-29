@@ -13,9 +13,9 @@ class MockAiVoiceApiClient implements AiVoiceApiClient {
 
     return VoiceTurnResponse(
       assistantText:
-          'Mock voice response: entendí "$userText". TODO(V1): conectar backend real por turnos.',
-      outputAudio: const <int>[],
-      outputAudioMimeType: 'audio/mpeg',
+          'Mock voice response: entendí "$userText". Recomendación breve: hidrátate y mantén una cena balanceada en proteína y fibra.',
+      outputAudio: _buildSilentWavBytes(durationMs: 550),
+      outputAudioMimeType: 'audio/wav',
       transcription: TranscriptionResult(
         text: userText,
         languageCode: request.locale ?? 'es',
@@ -29,5 +29,52 @@ class MockAiVoiceApiClient implements AiVoiceApiClient {
         latencyMs: 300,
       ),
     );
+  }
+
+  List<int> _buildSilentWavBytes({required int durationMs}) {
+    const int sampleRate = 16000;
+    const int channels = 1;
+    const int bitsPerSample = 16;
+    final int totalSamples = (sampleRate * durationMs) ~/ 1000;
+    final int bytesPerSample = bitsPerSample ~/ 8;
+    final int dataSize = totalSamples * channels * bytesPerSample;
+    final int fileSize = 36 + dataSize;
+
+    int offset = 0;
+    final List<int> bytes = List<int>.filled(44 + dataSize, 0);
+
+    void writeString(String value) {
+      for (final int codeUnit in value.codeUnits) {
+        bytes[offset++] = codeUnit;
+      }
+    }
+
+    void writeUint32(int value) {
+      bytes[offset++] = value & 0xFF;
+      bytes[offset++] = (value >> 8) & 0xFF;
+      bytes[offset++] = (value >> 16) & 0xFF;
+      bytes[offset++] = (value >> 24) & 0xFF;
+    }
+
+    void writeUint16(int value) {
+      bytes[offset++] = value & 0xFF;
+      bytes[offset++] = (value >> 8) & 0xFF;
+    }
+
+    writeString('RIFF');
+    writeUint32(fileSize);
+    writeString('WAVE');
+    writeString('fmt ');
+    writeUint32(16);
+    writeUint16(1);
+    writeUint16(channels);
+    writeUint32(sampleRate);
+    writeUint32(sampleRate * channels * bytesPerSample);
+    writeUint16(channels * bytesPerSample);
+    writeUint16(bitsPerSample);
+    writeString('data');
+    writeUint32(dataSize);
+
+    return bytes;
   }
 }

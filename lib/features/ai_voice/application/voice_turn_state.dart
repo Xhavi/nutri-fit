@@ -4,11 +4,12 @@ import '../domain/models/voice_turn_models.dart';
 
 enum VoiceTurnStatus {
   idle,
+  requestingPermission,
   recording,
-  uploading,
   processing,
-  playing,
-  done,
+  transcriptReady,
+  responseReady,
+  playingAudio,
   error,
 }
 
@@ -28,7 +29,7 @@ class VoiceTurnState {
   final String? errorMessage;
 
   bool get isBusy =>
-      status == VoiceTurnStatus.uploading ||
+      status == VoiceTurnStatus.requestingPermission ||
       status == VoiceTurnStatus.processing ||
       recording.isBusy;
 
