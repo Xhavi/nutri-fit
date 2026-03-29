@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/services/firebase/firebase_service_providers.dart';
 import '../../../../core/services/functions/functions_service.dart';
+import '../../../auth/presentation/controllers/session_providers.dart';
 import '../../application/voice_turn_controller.dart';
 import '../../application/voice_turn_state.dart';
 import '../../data/clients/ai_voice_api_client.dart';
@@ -49,6 +50,7 @@ final ChangeNotifierProvider<VoiceTurnController> voiceTurnControllerProvider =
         repository: ref.watch(aiVoiceRepositoryProvider),
         recorder: ref.watch(audioRecorderProvider),
         player: ref.watch(audioPlayerProvider),
+        localStorage: ref.watch(localStorageProvider),
       );
 
       ref.onDispose(controller.dispose);
