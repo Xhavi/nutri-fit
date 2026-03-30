@@ -56,6 +56,13 @@ class PaywallPage extends ConsumerWidget {
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ],
+            if (state.lifecycleMessage != null) ...<Widget>[
+              const SizedBox(height: 8),
+              Text(
+                state.lifecycleMessage!,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
             const SizedBox(height: 20),
             FilledButton.icon(
               onPressed: state.isLoading ? null : controller.purchase,
@@ -75,7 +82,7 @@ class PaywallPage extends ConsumerWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              'TODO backend: validar purchaseToken en servidor antes de conceder entitlement premium definitivo.',
+              'Las compras se sincronizan con backend para validar token de Google Play antes de activar entitlement definitivo.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],

@@ -11,8 +11,10 @@ class PlayBillingDataSource implements BillingDataSource {
       : _inAppPurchase = inAppPurchase ?? InAppPurchase.instance;
 
   final InAppPurchase _inAppPurchase;
-  final StreamController<EntitlementStatus> _controller =
+  final StreamController<EntitlementStatus> _entitlementController =
       StreamController<EntitlementStatus>.broadcast();
+  final StreamController<BillingPurchaseUpdate> _purchaseUpdatesController =
+      StreamController<BillingPurchaseUpdate>.broadcast();
 
   StreamSubscription<List<PurchaseDetails>>? _purchaseSub;
   ProductDetails? _product;
@@ -31,15 +33,22 @@ class PlayBillingDataSource implements BillingDataSource {
         isActive: false,
         source: 'play_billing_unavailable',
       );
-      _controller.add(_status);
+      _entitlementController.add(_status);
       return;
     }
 
     _purchaseSub = _inAppPurchase.purchaseStream.listen(
       _onPurchaseUpdates,
       onDone: () => _purchaseSub?.cancel(),
-      onError: (_) {
-        _controller.add(_status);
+      onError: (Object error) {
+        _purchaseUpdatesController.add(
+          BillingPurchaseUpdate(
+            type: BillingPurchaseUpdateType.error,
+            productId: BillingProductIds.aiMonthly499,
+            errorMessage: error.toString(),
+          ),
+        );
+        _entitlementController.add(_status);
       },
     );
 
@@ -86,7 +95,12 @@ class PlayBillingDataSource implements BillingDataSource {
 
   @override
   Stream<EntitlementStatus> watchEntitlementStatus() {
-    return _controller.stream;
+    return _entitlementController.stream;
+  }
+
+  @override
+  Stream<BillingPurchaseUpdate> watchPurchaseUpdates() {
+    return _purchaseUpdatesController.stream;
   }
 
   @override
@@ -108,16 +122,33 @@ class PlayBillingDataSource implements BillingDataSource {
   @override
   Future<void> restorePurchases() async {
     await _inAppPurchase.restorePurchases();
-    _controller.add(_status);
+    _entitlementController.add(_status);
   }
 
   void _onPurchaseUpdates(List<PurchaseDetails> purchases) {
     bool hasActive = false;
 
     for (final PurchaseDetails purchase in purchases) {
+      if (purchase.productID != BillingProductIds.aiMonthly499) {
+        continue;
+      }
+
       if (BillingPurchaseUtils.isPurchaseActive(purchase)) {
         hasActive = true;
       }
+
+      _purchaseUpdatesController.add(
+        BillingPurchaseUpdate(
+          type: BillingPurchaseUtils.toUpdateType(purchase.status),
+          productId: purchase.productID,
+          purchaseToken: purchase.verificationData.serverVerificationData,
+          orderId: purchase.purchaseID,
+          errorMessage: purchase.error?.message,
+          purchaseTime: purchase.transactionDate == null
+              ? null
+              : DateTime.tryParse(purchase.transactionDate!),
+        ),
+      );
 
       if (purchase.pendingCompletePurchase) {
         _inAppPurchase.completePurchase(purchase);
@@ -127,19 +158,18 @@ class PlayBillingDataSource implements BillingDataSource {
     _status = EntitlementStatus(
       tier: hasActive ? EntitlementTier.premiumAi : EntitlementTier.free,
       isActive: hasActive,
-      source: 'play_billing',
+      source: 'play_billing_local',
       totalUnits: hasActive ? 100 : null,
       consumedUnits: hasActive ? 0 : 0,
     );
 
-    // TODO(backend-verification): Replace local purchase interpretation with
-    // server-side verification of Play purchase tokens before granting premium.
-    _controller.add(_status);
+    _entitlementController.add(_status);
   }
 
   @override
   Future<void> dispose() async {
     await _purchaseSub?.cancel();
-    await _controller.close();
+    await _entitlementController.close();
+    await _purchaseUpdatesController.close();
   }
 }

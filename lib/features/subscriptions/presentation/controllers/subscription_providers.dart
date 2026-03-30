@@ -1,9 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/services/firebase/firebase_service_providers.dart';
 import '../../application/subscription_service.dart';
 import '../../data/adapters/billing_data_source.dart';
 import '../../data/adapters/mock_billing_data_source.dart';
 import '../../data/adapters/play_billing_data_source.dart';
+import '../../data/adapters/subscription_backend_data_source.dart';
 import '../../data/repositories/subscription_repository_impl.dart';
 import '../../domain/models/entitlement_status.dart';
 import '../../domain/repositories/subscription_repository.dart';
@@ -22,9 +24,19 @@ final Provider<BillingDataSource> billingDataSourceProvider = Provider<BillingDa
   return PlayBillingDataSource();
 });
 
+final Provider<SubscriptionBackendDataSource> subscriptionBackendDataSourceProvider =
+    Provider<SubscriptionBackendDataSource>((Ref ref) {
+      return FirebaseSubscriptionBackendDataSource(
+        functionsService: ref.watch(functionsServiceProvider),
+      );
+    });
+
 final Provider<SubscriptionRepository> subscriptionRepositoryProvider =
     Provider<SubscriptionRepository>((Ref ref) {
-      return SubscriptionRepositoryImpl(billingDataSource: ref.watch(billingDataSourceProvider));
+      return SubscriptionRepositoryImpl(
+        billingDataSource: ref.watch(billingDataSourceProvider),
+        backendDataSource: ref.watch(subscriptionBackendDataSourceProvider),
+      );
     });
 
 final Provider<SubscriptionService> subscriptionServiceProvider = Provider<SubscriptionService>((Ref ref) {

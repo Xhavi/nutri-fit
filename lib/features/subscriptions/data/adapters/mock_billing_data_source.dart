@@ -16,6 +16,8 @@ class MockBillingDataSource implements BillingDataSource {
 
   final StreamController<EntitlementStatus> _controller =
       StreamController<EntitlementStatus>.broadcast();
+  final StreamController<BillingPurchaseUpdate> _purchaseUpdatesController =
+      StreamController<BillingPurchaseUpdate>.broadcast();
 
   EntitlementStatus _status;
 
@@ -47,6 +49,11 @@ class MockBillingDataSource implements BillingDataSource {
   }
 
   @override
+  Stream<BillingPurchaseUpdate> watchPurchaseUpdates() {
+    return _purchaseUpdatesController.stream;
+  }
+
+  @override
   Future<bool> purchaseMonthlyPlan(SubscriptionPlan plan) async {
     _status = EntitlementStatus(
       tier: EntitlementTier.premiumAi,
@@ -55,17 +62,35 @@ class MockBillingDataSource implements BillingDataSource {
       totalUnits: 100,
       consumedUnits: _status.consumedUnits,
     );
+
+    _purchaseUpdatesController.add(
+      const BillingPurchaseUpdate(
+        type: BillingPurchaseUpdateType.purchased,
+        productId: BillingProductIds.aiMonthly499,
+        purchaseToken: 'mock-token',
+        orderId: 'mock-order',
+      ),
+    );
     _controller.add(_status);
     return true;
   }
 
   @override
   Future<void> restorePurchases() async {
+    _purchaseUpdatesController.add(
+      const BillingPurchaseUpdate(
+        type: BillingPurchaseUpdateType.restored,
+        productId: BillingProductIds.aiMonthly499,
+        purchaseToken: 'mock-token-restore',
+        orderId: 'mock-order-restore',
+      ),
+    );
     _controller.add(_status);
   }
 
   @override
   Future<void> dispose() async {
     await _controller.close();
+    await _purchaseUpdatesController.close();
   }
 }
