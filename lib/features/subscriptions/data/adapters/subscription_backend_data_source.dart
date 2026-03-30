@@ -21,6 +21,8 @@ abstract class SubscriptionBackendDataSource {
     required String productId,
     String? orderId,
   });
+
+  Future<FeatureQuotaStatus?> fetchFeatureQuota({required String feature});
 }
 
 class FirebaseSubscriptionBackendDataSource implements SubscriptionBackendDataSource {
@@ -61,6 +63,20 @@ class FirebaseSubscriptionBackendDataSource implements SubscriptionBackendDataSo
 
     return SubscriptionBackendMapper.mapSubscriptionRecord(payload);
   }
+
+  @override
+  Future<FeatureQuotaStatus?> fetchFeatureQuota({required String feature}) async {
+    final payload = await _functionsService.call(
+      'getRemainingQuota',
+      payload: <String, dynamic>{'feature': feature},
+    );
+
+    if (payload == null) {
+      return null;
+    }
+
+    return SubscriptionBackendMapper.mapFeatureAccess(payload);
+  }
 }
 
 class SubscriptionBackendMapper {
@@ -69,7 +85,13 @@ class SubscriptionBackendMapper {
   static BackendEntitlementSnapshot mapPlanStatus(Map<String, dynamic> payload) {
     final dynamic rawSubscription = payload['subscription'];
     if (rawSubscription is Map<String, dynamic>) {
-      return mapSubscriptionRecord(rawSubscription);
+      final dynamic rawUsage = payload['usage'];
+      final dynamic rawPlanCatalog = payload['planCatalog'];
+      return mapSubscriptionRecord(
+        rawSubscription,
+        usage: _asStringDynamicMap(rawUsage),
+        planCatalog: _asStringDynamicMap(rawPlanCatalog),
+      );
     }
 
     return const BackendEntitlementSnapshot(
@@ -82,7 +104,11 @@ class SubscriptionBackendMapper {
     );
   }
 
-  static BackendEntitlementSnapshot mapSubscriptionRecord(Map<String, dynamic> record) {
+  static BackendEntitlementSnapshot mapSubscriptionRecord(
+    Map<String, dynamic> record, {
+    Map<String, dynamic>? usage,
+    Map<String, dynamic>? planCatalog,
+  }) {
     final String planId = record['planId']?.toString() ?? 'free';
     final String status = record['status']?.toString() ?? 'inactive';
     final String provider = record['provider']?.toString() ?? 'unknown';
@@ -90,6 +116,11 @@ class SubscriptionBackendMapper {
 
     final bool isActive = status == 'active' || status == 'trialing';
     final bool isPremium = planId == 'premium_ai_monthly';
+
+    final int aiChatQuota = _readPlanFeatureQuota(planCatalog, planId: planId, feature: 'ai_chat');
+    final int aiVoiceQuota = _readPlanFeatureQuota(planCatalog, planId: planId, feature: 'ai_voice');
+    final int aiChatUsed = _readUsage(usage, 'ai_chat');
+    final int aiVoiceUsed = _readUsage(usage, 'ai_voice');
 
     return BackendEntitlementSnapshot(
       status: EntitlementStatus(
@@ -99,13 +130,95 @@ class SubscriptionBackendMapper {
         validUntil: currentPeriodEndAtRaw == null
             ? null
             : DateTime.tryParse(currentPeriodEndAtRaw),
-        totalUnits: isActive && isPremium ? 100 : null,
-        consumedUnits: 0,
+        aiChat: FeatureQuotaStatus(
+          totalUnits: isActive && isPremium ? aiChatQuota : null,
+          consumedUnits: isActive && isPremium ? aiChatUsed : 0,
+        ),
+        aiVoice: FeatureQuotaStatus(
+          totalUnits: isActive && isPremium ? aiVoiceQuota : null,
+          consumedUnits: isActive && isPremium ? aiVoiceUsed : 0,
+        ),
       ),
       provider: provider,
       currentPeriodEndAt: currentPeriodEndAtRaw == null
           ? null
           : DateTime.tryParse(currentPeriodEndAtRaw),
     );
+  }
+
+  static FeatureQuotaStatus mapFeatureAccess(Map<String, dynamic> payload) {
+    final int quota = _readInt(payload['quota']);
+    final int used = _readInt(payload['used']);
+
+    return FeatureQuotaStatus(
+      totalUnits: quota,
+      consumedUnits: used,
+    );
+  }
+
+  static int _readPlanFeatureQuota(
+    Map<String, dynamic>? planCatalog, {
+    required String planId,
+    required String feature,
+  }) {
+    if (planCatalog == null) {
+      return 0;
+    }
+
+    final dynamic rawPlan = planCatalog[planId];
+    final Map<String, dynamic>? plan = _asStringDynamicMap(rawPlan);
+    if (plan == null) {
+      return 0;
+    }
+
+    final dynamic rawFeatures = plan['features'];
+    final Map<String, dynamic>? features = _asStringDynamicMap(rawFeatures);
+    if (features == null) {
+      return 0;
+    }
+
+    final dynamic rawFeature = features[feature];
+    final Map<String, dynamic>? featureMap = _asStringDynamicMap(rawFeature);
+    if (featureMap == null) {
+      return 0;
+    }
+
+    return _readInt(featureMap['monthlyQuota']);
+  }
+
+  static int _readUsage(Map<String, dynamic>? usage, String feature) {
+    if (usage == null) {
+      return 0;
+    }
+
+    return _readInt(usage[feature]);
+  }
+
+  static Map<String, dynamic>? _asStringDynamicMap(dynamic raw) {
+    if (raw is Map<String, dynamic>) {
+      return raw;
+    }
+
+    if (raw is Map) {
+      return raw.map((dynamic key, dynamic value) => MapEntry(key.toString(), value));
+    }
+
+    return null;
+  }
+
+  static int _readInt(dynamic rawValue) {
+    if (rawValue is int) {
+      return rawValue;
+    }
+
+    if (rawValue is num) {
+      return rawValue.toInt();
+    }
+
+    if (rawValue is String) {
+      return int.tryParse(rawValue) ?? 0;
+    }
+
+    return 0;
   }
 }

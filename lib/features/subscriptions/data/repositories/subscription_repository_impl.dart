@@ -81,6 +81,25 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
     }
   }
 
+  @override
+  Future<void> refreshAiChatQuota() async {
+    if (!_status.isActive || _status.tier != EntitlementTier.premiumAi) {
+      return;
+    }
+
+    try {
+      final FeatureQuotaStatus? quota = await _backendDataSource.fetchFeatureQuota(feature: 'ai_chat');
+      if (quota == null) {
+        return;
+      }
+
+      _status = _status.copyWith(aiChat: quota);
+      _statusController.add(_status);
+    } catch (_) {
+      // Keep previous quota snapshot if backend can't be reached.
+    }
+  }
+
   Future<void> _handlePurchaseUpdate(BillingPurchaseUpdate update) async {
     switch (update.type) {
       case BillingPurchaseUpdateType.pending:
@@ -107,8 +126,8 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
           tier: EntitlementTier.premiumAi,
           isActive: true,
           source: 'play_billing_local_pending_server_validation',
-          totalUnits: 100,
-          consumedUnits: 0,
+          aiChat: FeatureQuotaStatus(totalUnits: 300, consumedUnits: 0),
+          aiVoice: FeatureQuotaStatus(totalUnits: 0, consumedUnits: 0),
         );
         _statusController.add(_status);
 

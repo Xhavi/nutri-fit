@@ -40,7 +40,7 @@ class PaywallPage extends ConsumerWidget {
                     const Text('Renovación automática mensual'),
                     const SizedBox(height: 8),
                     Text(
-                      'Incluye funcionalidades premium de IA (chat + voz), mientras nutrición, ejercicio y progreso siguen siendo gratis.',
+                      'Incluye funcionalidades premium de IA (chat en V1). La cuota de voz queda modelada para próximas versiones.',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/router/app_router.dart';
 import '../../../../shared/layouts/internal_base_layout.dart';
 import '../../../ai_voice/presentation/widgets/voice_turn_controls.dart';
+import '../../../subscriptions/domain/models/entitlement_status.dart';
 import '../../../subscriptions/presentation/controllers/subscription_providers.dart';
 import '../../domain/models/ai_coach_chat_message.dart';
 import '../controllers/ai_coach_providers.dart';
@@ -29,10 +30,12 @@ class _AiCoachPageState extends ConsumerState<AiCoachPage> {
     super.dispose();
   }
 
-  void _sendMessage() {
+  Future<void> _sendMessage() async {
     final String message = _textController.text;
     _textController.clear();
-    ref.read(aiCoachControllerProvider).sendMessage(message);
+
+    await ref.read(aiCoachControllerProvider).sendMessage(message);
+    await ref.read(subscriptionControllerProvider).refreshAiChatQuota();
   }
 
   void _scrollToBottom() {
@@ -56,7 +59,10 @@ class _AiCoachPageState extends ConsumerState<AiCoachPage> {
   @override
   Widget build(BuildContext context) {
     final AiCoachState state = ref.watch(aiCoachStateProvider);
-    final bool hasPremium = ref.watch(hasPremiumAiProvider);
+    final EntitlementStatus entitlement = ref.watch(entitlementStatusProvider);
+    final bool hasPremium = entitlement.tier == EntitlementTier.premiumAi && entitlement.isActive;
+    final bool hasRemainingQuota = (entitlement.remainingUnits ?? 0) > 0;
+    final bool canUseAiChat = hasPremium && hasRemainingQuota;
 
     ref.listen<AiCoachState>(aiCoachStateProvider, (_, AiCoachState next) {
       _scrollToBottom();
@@ -75,7 +81,14 @@ class _AiCoachPageState extends ConsumerState<AiCoachPage> {
           if (!hasPremium)
             _PremiumGateCard(
               onOpenPaywall: () => context.push(AppRoutePaths.paywall),
-            ),
+            )
+          else ...<Widget>[
+            _QuotaIndicatorCard(status: entitlement),
+            if (!hasRemainingQuota)
+              _QuotaExhaustedCard(
+                onOpenPaywall: () => context.push(AppRoutePaths.paywall),
+              ),
+          ],
           if (state.errorMessage != null)
             _ErrorBanner(
               message: state.errorMessage!,
@@ -104,7 +117,7 @@ class _AiCoachPageState extends ConsumerState<AiCoachPage> {
           _Composer(
             controller: _textController,
             isSending: state.isSending,
-            enabled: hasPremium,
+            enabled: canUseAiChat,
             onSend: _sendMessage,
           ),
           const SizedBox(height: 8),
@@ -134,6 +147,72 @@ class _PremiumGateCard extends StatelessWidget {
               child: Text('Las funciones de IA premium están bloqueadas. Activa la suscripción para continuar.'),
             ),
             FilledButton(
+              onPressed: onOpenPaywall,
+              child: const Text('Ver planes'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QuotaIndicatorCard extends StatelessWidget {
+  const _QuotaIndicatorCard({required this.status});
+
+  final EntitlementStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final int? total = status.totalUnits;
+    final int used = status.consumedUnits;
+
+    if (total == null) {
+      return const SizedBox.shrink();
+    }
+
+    final double progress = total == 0 ? 0 : (used / total).clamp(0, 1).toDouble();
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text('Tu cuota mensual de AI Coach', style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 8),
+            LinearProgressIndicator(value: progress),
+            const SizedBox(height: 8),
+            Text('Consumido: $used / $total'),
+            Text('Restante: ${status.remainingUnits ?? 0} mensajes'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QuotaExhaustedCard extends StatelessWidget {
+  const _QuotaExhaustedCard({required this.onOpenPaywall});
+
+  final VoidCallback onOpenPaywall;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: Theme.of(context).colorScheme.errorContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: <Widget>[
+            const Icon(Icons.hourglass_disabled_rounded),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Agotaste tu cuota mensual de AI Coach. Puedes esperar la renovación o revisar planes.',
+                style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
+              ),
+            ),
+            FilledButton.tonal(
               onPressed: onOpenPaywall,
               child: const Text('Ver planes'),
             ),
@@ -304,7 +383,7 @@ class _Composer extends StatelessWidget {
   final TextEditingController controller;
   final bool isSending;
   final bool enabled;
-  final VoidCallback onSend;
+  final Future<void> Function() onSend;
 
   @override
   Widget build(BuildContext context) {
@@ -323,7 +402,7 @@ class _Composer extends StatelessWidget {
               labelText: 'Escribe tu mensaje',
               hintText: enabled
                   ? 'Cuéntame qué necesitas para avanzar hoy…'
-                  : 'Activa AI Premium para enviar mensajes.',
+                  : 'Necesitas cuota disponible en AI Premium para enviar mensajes.',
             ),
           ),
         ),

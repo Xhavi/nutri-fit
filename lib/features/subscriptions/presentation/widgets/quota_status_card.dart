@@ -9,10 +9,7 @@ class QuotaStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final int? total = status.totalUnits;
-    final int used = status.consumedUnits;
-
-    if (total == null) {
+    if (!status.isActive || status.tier != EntitlementTier.premiumAi) {
       return Card(
         child: ListTile(
           leading: const Icon(Icons.insights_rounded),
@@ -22,8 +19,6 @@ class QuotaStatusCard extends StatelessWidget {
       );
     }
 
-    final double progress = total == 0 ? 0 : (used / total).clamp(0, 1).toDouble();
-
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -31,14 +26,50 @@ class QuotaStatusCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Text('Uso mensual de IA', style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: 8),
-            LinearProgressIndicator(value: progress),
-            const SizedBox(height: 8),
-            Text('Consumido: $used / $total'),
-            Text('Restante: ${status.remainingUnits ?? 0}'),
+            const SizedBox(height: 10),
+            _FeatureQuotaRow(
+              title: 'AI Chat',
+              quota: status.aiChat,
+            ),
+            const SizedBox(height: 10),
+            _FeatureQuotaRow(
+              title: 'AI Voice (V1 desactivado)',
+              quota: status.aiVoice,
+            ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _FeatureQuotaRow extends StatelessWidget {
+  const _FeatureQuotaRow({required this.title, required this.quota});
+
+  final String title;
+  final FeatureQuotaStatus quota;
+
+  @override
+  Widget build(BuildContext context) {
+    final int? total = quota.totalUnits;
+    final int used = quota.consumedUnits;
+
+    if (total == null) {
+      return Text('$title: cuota no disponible en este plan.');
+    }
+
+    final double progress = total == 0 ? 0 : (used / total).clamp(0, 1).toDouble();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(title, style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 6),
+        LinearProgressIndicator(value: progress),
+        const SizedBox(height: 6),
+        Text('Consumido: $used / $total'),
+        Text('Restante: ${quota.remainingUnits ?? 0}'),
+      ],
     );
   }
 }

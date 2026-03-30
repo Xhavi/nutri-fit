@@ -74,6 +74,14 @@ class SubscriptionController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> refreshAiChatQuota() async {
+    try {
+      await _service.refreshAiChatQuota();
+    } catch (_) {
+      // Keep previous state when quota refresh fails.
+    }
+  }
+
   @override
   void dispose() {
     _subscription?.cancel();

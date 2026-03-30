@@ -20,5 +20,7 @@ class SubscriptionService {
 
   Future<void> restorePurchases() => _repository.restorePurchases();
 
+  Future<void> refreshAiChatQuota() => _repository.refreshAiChatQuota();
+
   Future<void> dispose() => _repository.dispose();
 }
