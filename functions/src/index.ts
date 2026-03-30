@@ -22,7 +22,7 @@ import {
   validateFeatureAccess,
 } from './services/billing/entitlementService';
 import { FeatureKey } from './contracts/subscription';
-import { NotImplementedPurchaseVerifier } from './services/billing/purchaseVerifier';
+import { NotImplementedPurchaseVerifier, PlayDeveloperApiPurchaseVerifier } from './services/billing/purchaseVerifier';
 import { upsertSubscription } from './services/billing/subscriptionRepository';
 
 initializeApp();
@@ -104,24 +104,31 @@ export const syncSubscriptionPurchase = onCall(
     const userId = assertAuthenticatedUser(request.auth?.uid);
     const provider = request.data?.provider as 'app_store' | 'play_store' | 'stripe';
     const receiptToken = request.data?.receiptToken as string;
+    const productId = request.data?.productId as string | undefined;
+    const orderId = request.data?.orderId as string | undefined;
 
     if (!provider || !receiptToken) {
       throw new HttpsError('invalid-argument', 'provider and receiptToken are required.');
     }
 
-    const verifier = new NotImplementedPurchaseVerifier();
+    const verifier = provider === 'play_store'
+      ? new PlayDeveloperApiPurchaseVerifier()
+      : new NotImplementedPurchaseVerifier();
 
     try {
       const verified = await verifier.verify({
         provider,
         receiptToken,
         userId,
+        productId,
+        orderId,
       });
 
       return await upsertSubscription(userId, {
         planId: verified.planId,
         status: verified.status,
         provider,
+        providerProductId: verified.providerProductId ?? productId,
         providerSubscriptionId: verified.providerSubscriptionId,
         currentPeriodStartAt: verified.currentPeriodStartAt,
         currentPeriodEndAt: verified.currentPeriodEndAt,
