@@ -14,5 +14,7 @@ abstract class SubscriptionRepository {
 
   Future<void> restorePurchases();
 
+  Future<void> refreshAiChatQuota();
+
   Future<void> dispose();
 }
