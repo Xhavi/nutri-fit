@@ -14,7 +14,7 @@ const PLAN_CATALOG: Record<PlanId, PlanDefinition> = {
     displayName: 'Premium IA mensual',
     features: {
       ai_chat: { enabled: true, monthlyQuota: 300 },
-      ai_voice: { enabled: false, monthlyQuota: 0 },
+      ai_voice: { enabled: true, monthlyQuota: 60 },
     },
   },
 };

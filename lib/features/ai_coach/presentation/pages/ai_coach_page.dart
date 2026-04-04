@@ -56,7 +56,8 @@ class _AiCoachPageState extends ConsumerState<AiCoachPage> {
   @override
   Widget build(BuildContext context) {
     final AiCoachState state = ref.watch(aiCoachStateProvider);
-    final bool hasPremium = ref.watch(hasPremiumAiProvider);
+    final bool hasChatAccess = ref.watch(hasAiChatAccessProvider);
+    final bool hasVoiceAccess = ref.watch(hasAiVoiceAccessProvider);
 
     ref.listen<AiCoachState>(aiCoachStateProvider, (_, AiCoachState next) {
       _scrollToBottom();
@@ -72,8 +73,12 @@ class _AiCoachPageState extends ConsumerState<AiCoachPage> {
             usesMockBackend: state.usesMockBackend,
             onDismiss: () => ref.read(aiCoachControllerProvider).dismissDisclaimer(),
           ),
-          if (!hasPremium)
+          if (!hasChatAccess || !hasVoiceAccess)
             _PremiumGateCard(
+              message: _gateMessage(
+                hasChatAccess: hasChatAccess,
+                hasVoiceAccess: hasVoiceAccess,
+              ),
               onOpenPaywall: () => context.push(AppRoutePaths.paywall),
             ),
           if (state.errorMessage != null)
@@ -104,20 +109,39 @@ class _AiCoachPageState extends ConsumerState<AiCoachPage> {
           _Composer(
             controller: _textController,
             isSending: state.isSending,
-            enabled: hasPremium,
+            enabled: hasChatAccess,
             onSend: _sendMessage,
           ),
           const SizedBox(height: 8),
-          VoiceTurnControls(enabled: hasPremium),
+          VoiceTurnControls(enabled: hasVoiceAccess),
         ],
       ),
     );
   }
+
+  String _gateMessage({
+    required bool hasChatAccess,
+    required bool hasVoiceAccess,
+  }) {
+    if (!hasChatAccess && !hasVoiceAccess) {
+      return 'Las funciones premium de IA están bloqueadas. Activa la suscripción para continuar.';
+    }
+
+    if (!hasChatAccess) {
+      return 'El chat premium está bloqueado en tu plan actual. Activa o restaura la suscripción para continuar.';
+    }
+
+    return 'La conversación por voz no está disponible en tu estado actual. Activa o restaura la suscripción para usarla.';
+  }
 }
 
 class _PremiumGateCard extends StatelessWidget {
-  const _PremiumGateCard({required this.onOpenPaywall});
+  const _PremiumGateCard({
+    required this.message,
+    required this.onOpenPaywall,
+  });
 
+  final String message;
   final VoidCallback onOpenPaywall;
 
   @override
@@ -130,8 +154,8 @@ class _PremiumGateCard extends StatelessWidget {
           children: <Widget>[
             const Icon(Icons.lock_rounded),
             const SizedBox(width: 10),
-            const Expanded(
-              child: Text('Las funciones de IA premium están bloqueadas. Activa la suscripción para continuar.'),
+            Expanded(
+              child: Text(message),
             ),
             FilledButton(
               onPressed: onOpenPaywall,

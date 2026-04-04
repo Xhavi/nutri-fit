@@ -22,6 +22,14 @@ class PlayBillingDataSource implements BillingDataSource {
     tier: EntitlementTier.free,
     isActive: false,
     source: 'unknown',
+    featureAccess: <PremiumFeature, FeatureEntitlementStatus>{
+      PremiumFeature.aiChat: FeatureEntitlementStatus.unavailable(
+        PremiumFeature.aiChat,
+      ),
+      PremiumFeature.aiVoice: FeatureEntitlementStatus.unavailable(
+        PremiumFeature.aiVoice,
+      ),
+    },
   );
 
   @override
@@ -32,6 +40,14 @@ class PlayBillingDataSource implements BillingDataSource {
         tier: EntitlementTier.free,
         isActive: false,
         source: 'play_billing_unavailable',
+        featureAccess: <PremiumFeature, FeatureEntitlementStatus>{
+          PremiumFeature.aiChat: FeatureEntitlementStatus.unavailable(
+            PremiumFeature.aiChat,
+          ),
+          PremiumFeature.aiVoice: FeatureEntitlementStatus.unavailable(
+            PremiumFeature.aiVoice,
+          ),
+        },
       );
       _entitlementController.add(_status);
       return;
@@ -157,10 +173,20 @@ class PlayBillingDataSource implements BillingDataSource {
 
     _status = EntitlementStatus(
       tier: hasActive ? EntitlementTier.premiumAi : EntitlementTier.free,
-      isActive: hasActive,
-      source: 'play_billing_local',
-      totalUnits: hasActive ? 100 : null,
-      consumedUnits: hasActive ? 0 : 0,
+      isActive: false,
+      source: hasActive
+          ? 'play_billing_local_pending_server_validation'
+          : 'play_billing_local',
+      featureAccess: hasActive
+          ? _pendingFeatureAccess()
+          : const <PremiumFeature, FeatureEntitlementStatus>{
+              PremiumFeature.aiChat: FeatureEntitlementStatus.unavailable(
+                PremiumFeature.aiChat,
+              ),
+              PremiumFeature.aiVoice: FeatureEntitlementStatus.unavailable(
+                PremiumFeature.aiVoice,
+              ),
+            },
     );
 
     _entitlementController.add(_status);
@@ -172,4 +198,27 @@ class PlayBillingDataSource implements BillingDataSource {
     await _entitlementController.close();
     await _purchaseUpdatesController.close();
   }
+}
+
+Map<PremiumFeature, FeatureEntitlementStatus> _pendingFeatureAccess() {
+  return <PremiumFeature, FeatureEntitlementStatus>{
+    PremiumFeature.aiChat: const FeatureEntitlementStatus(
+      feature: PremiumFeature.aiChat,
+      entitled: true,
+      allowed: false,
+      quota: 0,
+      used: 0,
+      remaining: 0,
+      reason: 'pending_verification',
+    ),
+    PremiumFeature.aiVoice: const FeatureEntitlementStatus(
+      feature: PremiumFeature.aiVoice,
+      entitled: true,
+      allowed: false,
+      quota: 0,
+      used: 0,
+      remaining: 0,
+      reason: 'pending_verification',
+    ),
+  };
 }

@@ -7,11 +7,17 @@ import 'billing_data_source.dart';
 class MockBillingDataSource implements BillingDataSource {
   MockBillingDataSource({bool startPremium = false})
       : _status = EntitlementStatus(
-          tier: EntitlementTier.premiumAi,
+          tier: startPremium ? EntitlementTier.premiumAi : EntitlementTier.free,
           isActive: startPremium,
           source: 'mock',
-          totalUnits: 100,
-          consumedUnits: 20,
+          totalUnits: startPremium ? 360 : null,
+          consumedUnits: startPremium ? 20 : 0,
+          featureAccess: startPremium
+              ? _activeFeatureAccess(
+                  chatUsed: 12,
+                  voiceUsed: 8,
+                )
+              : _lockedFeatureAccess(),
         );
 
   final StreamController<EntitlementStatus> _controller =
@@ -59,8 +65,12 @@ class MockBillingDataSource implements BillingDataSource {
       tier: EntitlementTier.premiumAi,
       isActive: true,
       source: 'mock',
-      totalUnits: 100,
+      totalUnits: 360,
       consumedUnits: _status.consumedUnits,
+      featureAccess: _activeFeatureAccess(
+        chatUsed: 12,
+        voiceUsed: 8,
+      ),
     );
 
     _purchaseUpdatesController.add(
@@ -77,6 +87,20 @@ class MockBillingDataSource implements BillingDataSource {
 
   @override
   Future<void> restorePurchases() async {
+    if (!_status.isActive) {
+      _status = EntitlementStatus(
+        tier: EntitlementTier.premiumAi,
+        isActive: true,
+        source: 'mock',
+        totalUnits: 360,
+        consumedUnits: 20,
+        featureAccess: _activeFeatureAccess(
+          chatUsed: 12,
+          voiceUsed: 8,
+        ),
+      );
+    }
+
     _purchaseUpdatesController.add(
       const BillingPurchaseUpdate(
         type: BillingPurchaseUpdateType.restored,
@@ -93,4 +117,39 @@ class MockBillingDataSource implements BillingDataSource {
     await _controller.close();
     await _purchaseUpdatesController.close();
   }
+}
+
+Map<PremiumFeature, FeatureEntitlementStatus> _activeFeatureAccess({
+  int chatUsed = 0,
+  int voiceUsed = 0,
+}) {
+  return <PremiumFeature, FeatureEntitlementStatus>{
+    PremiumFeature.aiChat: FeatureEntitlementStatus(
+      feature: PremiumFeature.aiChat,
+      entitled: true,
+      allowed: true,
+      quota: 300,
+      used: chatUsed,
+      remaining: 300 - chatUsed,
+    ),
+    PremiumFeature.aiVoice: FeatureEntitlementStatus(
+      feature: PremiumFeature.aiVoice,
+      entitled: true,
+      allowed: true,
+      quota: 60,
+      used: voiceUsed,
+      remaining: 60 - voiceUsed,
+    ),
+  };
+}
+
+Map<PremiumFeature, FeatureEntitlementStatus> _lockedFeatureAccess() {
+  return <PremiumFeature, FeatureEntitlementStatus>{
+    PremiumFeature.aiChat: const FeatureEntitlementStatus.unavailable(
+      PremiumFeature.aiChat,
+    ),
+    PremiumFeature.aiVoice: const FeatureEntitlementStatus.unavailable(
+      PremiumFeature.aiVoice,
+    ),
+  };
 }

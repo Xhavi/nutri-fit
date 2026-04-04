@@ -7,17 +7,21 @@ import '../../data/adapters/mock_billing_data_source.dart';
 import '../../data/adapters/play_billing_data_source.dart';
 import '../../data/adapters/subscription_backend_data_source.dart';
 import '../../data/repositories/subscription_repository_impl.dart';
-import '../../domain/models/entitlement_status.dart';
 import '../../domain/repositories/subscription_repository.dart';
 import 'subscription_controller.dart';
 import 'subscription_state.dart';
 
 final Provider<bool> billingForceMockProvider = Provider<bool>((Ref ref) {
-  return const bool.fromEnvironment('BILLING_USE_MOCK', defaultValue: true);
+  return const bool.fromEnvironment('BILLING_USE_MOCK', defaultValue: false);
+});
+
+final Provider<bool> useBillingMockProvider = Provider<bool>((Ref ref) {
+  return ref.watch(billingForceMockProvider) ||
+      ref.watch(useFirebaseMocksProvider);
 });
 
 final Provider<BillingDataSource> billingDataSourceProvider = Provider<BillingDataSource>((Ref ref) {
-  if (ref.watch(billingForceMockProvider)) {
+  if (ref.watch(useBillingMockProvider)) {
     return MockBillingDataSource();
   }
 
@@ -26,6 +30,10 @@ final Provider<BillingDataSource> billingDataSourceProvider = Provider<BillingDa
 
 final Provider<SubscriptionBackendDataSource> subscriptionBackendDataSourceProvider =
     Provider<SubscriptionBackendDataSource>((Ref ref) {
+      if (ref.watch(useBillingMockProvider)) {
+        return MockSubscriptionBackendDataSource();
+      }
+
       return FirebaseSubscriptionBackendDataSource(
         functionsService: ref.watch(functionsServiceProvider),
       );
@@ -58,6 +66,10 @@ final Provider<bool> hasPremiumAiProvider = Provider<bool>((Ref ref) {
   return ref.watch(subscriptionStateProvider).hasPremium;
 });
 
-final Provider<EntitlementStatus> entitlementStatusProvider = Provider<EntitlementStatus>((Ref ref) {
-  return ref.watch(subscriptionStateProvider).status;
+final Provider<bool> hasAiChatAccessProvider = Provider<bool>((Ref ref) {
+  return ref.watch(subscriptionStateProvider).hasChatAccess;
+});
+
+final Provider<bool> hasAiVoiceAccessProvider = Provider<bool>((Ref ref) {
+  return ref.watch(subscriptionStateProvider).hasVoiceAccess;
 });

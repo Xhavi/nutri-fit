@@ -85,9 +85,29 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
     switch (update.type) {
       case BillingPurchaseUpdateType.pending:
         _status = const EntitlementStatus(
-          tier: EntitlementTier.free,
+          tier: EntitlementTier.premiumAi,
           isActive: false,
           source: 'play_billing_pending_verification',
+          featureAccess: <PremiumFeature, FeatureEntitlementStatus>{
+            PremiumFeature.aiChat: FeatureEntitlementStatus(
+              feature: PremiumFeature.aiChat,
+              entitled: true,
+              allowed: false,
+              quota: 0,
+              used: 0,
+              remaining: 0,
+              reason: 'pending_verification',
+            ),
+            PremiumFeature.aiVoice: FeatureEntitlementStatus(
+              feature: PremiumFeature.aiVoice,
+              entitled: true,
+              allowed: false,
+              quota: 0,
+              used: 0,
+              remaining: 0,
+              reason: 'pending_verification',
+            ),
+          },
         );
         _statusController.add(_status);
         return;
@@ -105,29 +125,51 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
 
         _status = const EntitlementStatus(
           tier: EntitlementTier.premiumAi,
-          isActive: true,
+          isActive: false,
           source: 'play_billing_local_pending_server_validation',
-          totalUnits: 100,
-          consumedUnits: 0,
+          featureAccess: <PremiumFeature, FeatureEntitlementStatus>{
+            PremiumFeature.aiChat: FeatureEntitlementStatus(
+              feature: PremiumFeature.aiChat,
+              entitled: true,
+              allowed: false,
+              quota: 0,
+              used: 0,
+              remaining: 0,
+              reason: 'pending_verification',
+            ),
+            PremiumFeature.aiVoice: FeatureEntitlementStatus(
+              feature: PremiumFeature.aiVoice,
+              entitled: true,
+              allowed: false,
+              quota: 0,
+              used: 0,
+              remaining: 0,
+              reason: 'pending_verification',
+            ),
+          },
         );
         _statusController.add(_status);
 
         try {
-          final BackendEntitlementSnapshot? snapshot = await _backendDataSource.syncPlayPurchase(
+          await _backendDataSource.syncPlayPurchase(
             purchaseToken: update.purchaseToken!,
             productId: update.productId,
             orderId: update.orderId,
           );
-
-          if (snapshot != null) {
-            _status = snapshot.status;
-            _statusController.add(_status);
-          }
+          await _refreshFromBackend();
         } catch (_) {
           _status = const EntitlementStatus(
             tier: EntitlementTier.free,
             isActive: false,
             source: 'backend_verification_failed',
+            featureAccess: <PremiumFeature, FeatureEntitlementStatus>{
+              PremiumFeature.aiChat: FeatureEntitlementStatus.unavailable(
+                PremiumFeature.aiChat,
+              ),
+              PremiumFeature.aiVoice: FeatureEntitlementStatus.unavailable(
+                PremiumFeature.aiVoice,
+              ),
+            },
           );
           _statusController.add(_status);
         }
@@ -137,6 +179,14 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
           tier: EntitlementTier.free,
           isActive: false,
           source: 'play_billing_canceled',
+          featureAccess: <PremiumFeature, FeatureEntitlementStatus>{
+            PremiumFeature.aiChat: FeatureEntitlementStatus.unavailable(
+              PremiumFeature.aiChat,
+            ),
+            PremiumFeature.aiVoice: FeatureEntitlementStatus.unavailable(
+              PremiumFeature.aiVoice,
+            ),
+          },
         );
         _statusController.add(_status);
         return;
@@ -145,6 +195,14 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
           tier: EntitlementTier.free,
           isActive: false,
           source: 'play_billing_error',
+          featureAccess: <PremiumFeature, FeatureEntitlementStatus>{
+            PremiumFeature.aiChat: FeatureEntitlementStatus.unavailable(
+              PremiumFeature.aiChat,
+            ),
+            PremiumFeature.aiVoice: FeatureEntitlementStatus.unavailable(
+              PremiumFeature.aiVoice,
+            ),
+          },
         );
         _statusController.add(_status);
         return;
