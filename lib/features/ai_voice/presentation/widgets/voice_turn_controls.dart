@@ -32,7 +32,7 @@ class VoiceTurnControls extends ConsumerWidget {
             ),
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
-              value: state.selectedVoiceProfile.id,
+              initialValue: state.selectedVoiceProfile.id,
               decoration: const InputDecoration(
                 labelText: 'Perfil de voz',
                 prefixIcon: Icon(Icons.record_voice_over_rounded),

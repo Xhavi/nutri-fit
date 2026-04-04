@@ -19,6 +19,8 @@ class SubscriptionState {
   final String? errorMessage;
 
   bool get hasPremium => status.isActive && status.tier == EntitlementTier.premiumAi;
+  bool get hasChatAccess => status.hasChatAccess;
+  bool get hasVoiceAccess => status.hasVoiceAccess;
 
   String? get lifecycleMessage {
     if (status.source.contains('pending_verification')) {

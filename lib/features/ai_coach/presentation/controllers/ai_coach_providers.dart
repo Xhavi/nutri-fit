@@ -15,7 +15,7 @@ import 'ai_coach_controller.dart';
 import 'ai_coach_state.dart';
 
 final Provider<bool> aiCoachForceMockProvider = Provider<bool>((Ref ref) {
-  return const bool.fromEnvironment('AI_COACH_USE_MOCK', defaultValue: true);
+  return const bool.fromEnvironment('AI_COACH_USE_MOCK', defaultValue: false);
 });
 
 final Provider<bool> useAiCoachMockProvider = Provider<bool>((Ref ref) {

@@ -9,15 +9,53 @@ class QuotaStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!status.isActive || status.tier != EntitlementTier.premiumAi) {
+    final List<FeatureEntitlementStatus> featureStatuses = status.featureAccess
+        .values
+        .where((FeatureEntitlementStatus featureStatus) {
+      return featureStatus.entitled || featureStatus.hasQuota;
+    }).toList(growable: false);
+
+    if (featureStatuses.isNotEmpty) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                'Uso mensual de IA',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: 8),
+              ...featureStatuses.map(
+                (FeatureEntitlementStatus featureStatus) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _FeatureQuotaRow(featureStatus: featureStatus),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final int? total = status.totalUnits;
+    final int used = status.consumedUnits;
+
+    if (total == null) {
       return Card(
         child: ListTile(
           leading: const Icon(Icons.insights_rounded),
           title: const Text('Cuota IA'),
-          subtitle: const Text('La cuota se habilita cuando la suscripción premium está activa.'),
+          subtitle: const Text(
+            'La cuota se habilita cuando la suscripcion premium esta activa.',
+          ),
         ),
       );
     }
+
+    final double progress =
+        total == 0 ? 0 : (used / total).clamp(0, 1).toDouble();
 
     return Card(
       child: Padding(
@@ -25,17 +63,15 @@ class QuotaStatusCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text('Uso mensual de IA', style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: 10),
-            _FeatureQuotaRow(
-              title: 'AI Chat',
-              quota: status.aiChat,
+            Text(
+              'Uso mensual de IA',
+              style: Theme.of(context).textTheme.titleSmall,
             ),
-            const SizedBox(height: 10),
-            _FeatureQuotaRow(
-              title: 'AI Voice (V1 desactivado)',
-              quota: status.aiVoice,
-            ),
+            const SizedBox(height: 8),
+            LinearProgressIndicator(value: progress),
+            const SizedBox(height: 8),
+            Text('Consumido: $used / $total'),
+            Text('Restante: ${status.remainingUnits ?? 0}'),
           ],
         ),
       ),
@@ -44,31 +80,43 @@ class QuotaStatusCard extends StatelessWidget {
 }
 
 class _FeatureQuotaRow extends StatelessWidget {
-  const _FeatureQuotaRow({required this.title, required this.quota});
+  const _FeatureQuotaRow({required this.featureStatus});
 
-  final String title;
-  final FeatureQuotaStatus quota;
+  final FeatureEntitlementStatus featureStatus;
 
   @override
   Widget build(BuildContext context) {
-    final int? total = quota.totalUnits;
-    final int used = quota.consumedUnits;
+    final double progress = featureStatus.quota == 0
+        ? 0
+        : (featureStatus.used / featureStatus.quota).clamp(0, 1).toDouble();
 
-    if (total == null) {
-      return Text('$title: cuota no disponible en este plan.');
+    final String subtitle;
+    if (!featureStatus.entitled) {
+      subtitle = 'No incluido en el plan actual.';
+    } else if (!featureStatus.allowed &&
+        featureStatus.reason == 'subscription_not_active') {
+      subtitle = 'Disponible cuando la suscripcion quede activa.';
+    } else if (!featureStatus.allowed &&
+        featureStatus.reason == 'monthly_quota_exceeded') {
+      subtitle = 'Cuota agotada por este ciclo.';
+    } else if (featureStatus.quota == 0) {
+      subtitle = 'Validando disponibilidad y cuota...';
+    } else {
+      subtitle = 'Consumido: ${featureStatus.used} / ${featureStatus.quota}';
     }
-
-    final double progress = total == 0 ? 0 : (used / total).clamp(0, 1).toDouble();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Text(title, style: Theme.of(context).textTheme.titleSmall),
-        const SizedBox(height: 6),
+        Text(
+          featureStatus.feature.label,
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
+        const SizedBox(height: 4),
         LinearProgressIndicator(value: progress),
         const SizedBox(height: 6),
-        Text('Consumido: $used / $total'),
-        Text('Restante: ${quota.remainingUnits ?? 0}'),
+        Text(subtitle),
+        if (featureStatus.quota > 0) Text('Restante: ${featureStatus.remaining}'),
       ],
     );
   }
