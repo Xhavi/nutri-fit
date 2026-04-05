@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../onboarding/data/onboarding_repository.dart';
 import '../../../onboarding/domain/onboarding_profile.dart';
+import '../../../profile/data/health_profile_repository.dart';
 import '../../data/auth_repository.dart';
 import '../../domain/session_state.dart';
 
@@ -11,13 +12,17 @@ class SessionController extends ChangeNotifier {
   SessionController({
     required AuthRepository authRepository,
     required OnboardingRepository onboardingRepository,
-  }) : _authRepository = authRepository,
-       _onboardingRepository = onboardingRepository {
-    _authSubscription = _authRepository.authStateChanges().listen(_onAuthStateChanged);
+    required HealthProfileRepository healthProfileRepository,
+  })  : _authRepository = authRepository,
+        _onboardingRepository = onboardingRepository,
+        _healthProfileRepository = healthProfileRepository {
+    _authSubscription =
+        _authRepository.authStateChanges().listen(_onAuthStateChanged);
   }
 
   final AuthRepository _authRepository;
   final OnboardingRepository _onboardingRepository;
+  final HealthProfileRepository _healthProfileRepository;
 
   SessionState _state = SessionState.initial();
   SessionState get state => _state;
@@ -47,12 +52,15 @@ class SessionController extends ChangeNotifier {
   }
 
   Future<void> signIn({required String email, required String password}) async {
-    final String userId = await _authRepository.signIn(email: email, password: password);
+    final String userId =
+        await _authRepository.signIn(email: email, password: password);
     await _resolveStateForUser(userId);
   }
 
-  Future<void> register({required String email, required String password}) async {
-    final String userId = await _authRepository.register(email: email, password: password);
+  Future<void> register(
+      {required String email, required String password}) async {
+    final String userId =
+        await _authRepository.register(email: email, password: password);
     await _resolveStateForUser(userId);
   }
 
@@ -63,16 +71,13 @@ class SessionController extends ChangeNotifier {
     }
 
     await _onboardingRepository.saveOnboarding(userId, profile);
+    await _healthProfileRepository.saveFromOnboardingProfile(profile);
     _state = SessionState(status: SessionStatus.authenticated, userId: userId);
     notifyListeners();
   }
 
   Future<void> signOut() async {
-    final String? userId = _state.userId;
-    if (userId != null) {
-      await _onboardingRepository.clearOnboarding(userId);
-    }
-
+    await _healthProfileRepository.clearProfile();
     await _authRepository.signOut();
     _state = const SessionState(status: SessionStatus.unauthenticated);
     notifyListeners();
@@ -93,13 +98,34 @@ class SessionController extends ChangeNotifier {
       return;
     }
 
-    final bool onboardingDone = await _onboardingRepository.isOnboardingCompleted(userId);
+    final bool onboardingDone =
+        await _onboardingRepository.isOnboardingCompleted(userId);
+    if (onboardingDone) {
+      await _syncReusableHealthProfile(userId);
+    }
 
     _state = SessionState(
-      status: onboardingDone ? SessionStatus.authenticated : SessionStatus.needsOnboarding,
+      status: onboardingDone
+          ? SessionStatus.authenticated
+          : SessionStatus.needsOnboarding,
       userId: userId,
     );
     notifyListeners();
+  }
+
+  Future<void> _syncReusableHealthProfile(String userId) async {
+    final profile = await _healthProfileRepository.loadProfile();
+    if (profile != null && profile.isComplete) {
+      return;
+    }
+
+    final OnboardingProfile? onboardingProfile =
+        await _onboardingRepository.getOnboardingProfile(userId);
+    if (onboardingProfile == null) {
+      return;
+    }
+
+    await _healthProfileRepository.saveFromOnboardingProfile(onboardingProfile);
   }
 
   @override

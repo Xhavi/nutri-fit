@@ -23,12 +23,12 @@ class AiCoachController extends ChangeNotifier {
     required ExerciseState Function() getExerciseState,
     required SessionState Function() getSessionState,
     required bool usesMockBackend,
-  }) : _repository = repository,
-       _profileRepository = profileRepository,
-       _getNutritionState = getNutritionState,
-       _getExerciseState = getExerciseState,
-       _getSessionState = getSessionState,
-       _state = AiCoachState.initial(usesMockBackend: usesMockBackend);
+  })  : _repository = repository,
+        _profileRepository = profileRepository,
+        _getNutritionState = getNutritionState,
+        _getExerciseState = getExerciseState,
+        _getSessionState = getSessionState,
+        _state = AiCoachState.initial(usesMockBackend: usesMockBackend);
 
   final AiCoachRepository _repository;
   final HealthProfileRepository _profileRepository;
@@ -85,10 +85,12 @@ class AiCoachController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _send({required String userInput, required bool appendSystemHint}) async {
+  Future<void> _send(
+      {required String userInput, required bool appendSystemHint}) async {
     try {
       final AiCoachChatRequest request = await _buildRequest(userInput);
-      final AiCoachChatResponse response = await _repository.sendMessage(request);
+      final AiCoachChatResponse response =
+          await _repository.sendMessage(request);
 
       final List<AiCoachChatMessage> nextMessages = <AiCoachChatMessage>[
         ..._state.messages,
@@ -151,7 +153,7 @@ class AiCoachController extends ChangeNotifier {
   }
 
   AiCoachUserProfileContext? _buildProfileContext(WellnessProfile? profile) {
-    if (profile == null) {
+    if (profile == null || !profile.isComplete) {
       return null;
     }
 
@@ -164,14 +166,18 @@ class AiCoachController extends ChangeNotifier {
       sex: profile.userProfile.sex.name,
       heightCm: profile.userProfile.heightCm,
       weightKg: profile.userProfile.weightKg,
-      dietaryPreferences: <String>[profile.nutritionPreferences.dietaryPreference.name],
+      dietaryPreferences: <String>[
+        profile.nutritionPreferences.dietaryPreference.name
+      ],
       allergies: restrictions,
       medicalNotes: const <String>[],
     );
   }
 
-  AiCoachGoalContext _buildGoalContext(WellnessProfile? profile, SessionState sessionState) {
-    final String primaryGoal = profile?.goals.primaryGoal.label ?? 'Mejora de hábitos sostenibles';
+  AiCoachGoalContext _buildGoalContext(
+      WellnessProfile? profile, SessionState sessionState) {
+    final String primaryGoal =
+        profile?.goals.primaryGoal.label ?? 'Mejora de hábitos sostenibles';
 
     final StringBuffer notes = StringBuffer();
     if (profile?.goals.targetWeightKg != null) {
@@ -193,10 +199,8 @@ class AiCoachController extends ChangeNotifier {
       ..sort((MealEntry a, MealEntry b) => b.date.compareTo(a.date));
 
     return sortedEntries.take(6).map((MealEntry entry) {
-      final String foodSummary = entry.foodItems
-          .map((food) => food.name)
-          .take(3)
-          .join(', ');
+      final String foodSummary =
+          entry.foodItems.map((food) => food.name).take(3).join(', ');
 
       final String summary =
           '${_mealTypeLabel(entry.mealType)}: ${foodSummary.isEmpty ? 'Registro sin detalle' : foodSummary}';
@@ -209,7 +213,8 @@ class AiCoachController extends ChangeNotifier {
     }).toList(growable: false);
   }
 
-  List<AiCoachActivityContextItem> _buildActivityContext(List<Workout> workouts) {
+  List<AiCoachActivityContextItem> _buildActivityContext(
+      List<Workout> workouts) {
     final List<Workout> sortedWorkouts = <Workout>[...workouts]
       ..sort((Workout a, Workout b) => b.date.compareTo(a.date));
 
@@ -231,7 +236,9 @@ class AiCoachController extends ChangeNotifier {
       return 'high';
     }
 
-    if (workout.totalDuration.inMinutes >= 35 || activities >= 2 || exercises >= 3) {
+    if (workout.totalDuration.inMinutes >= 35 ||
+        activities >= 2 ||
+        exercises >= 3) {
       return 'medium';
     }
 

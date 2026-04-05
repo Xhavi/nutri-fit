@@ -18,7 +18,8 @@ class SubscriptionState {
   final bool isLoading;
   final String? errorMessage;
 
-  bool get hasPremium => status.isActive && status.tier == EntitlementTier.premiumAi;
+  bool get hasPremium =>
+      status.isActive && status.tier == EntitlementTier.premiumAi;
   bool get hasChatAccess => status.hasChatAccess;
   bool get hasVoiceAccess => status.hasVoiceAccess;
 
@@ -26,14 +27,16 @@ class SubscriptionState {
     if (status.source.contains('pending_verification')) {
       return 'Procesando compra y validando con servidor...';
     }
-    if (status.source.contains(':canceled') || status.source.contains('play_billing_canceled')) {
-      return 'Tu suscripción está cancelada; mantienes premium hasta que termine el periodo activo.';
+    if (status.source.contains(':canceled') ||
+        status.source.contains('play_billing_canceled')) {
+      return 'Tu suscripcion esta cancelada; mantienes premium hasta que termine el periodo activo.';
     }
     if (status.source.contains(':expired')) {
-      return 'Tu suscripción expiró. Puedes reactivarla desde Google Play.';
+      return 'Tu suscripcion expiro. Puedes reactivarla desde Google Play.';
     }
-    if (status.source.contains('play_billing_error') || status.source.contains('backend_verification_failed')) {
-      return 'No pudimos validar la compra todavía. Intenta restaurar o reintentar en unos minutos.';
+    if (status.source.contains('play_billing_error') ||
+        status.source.contains('backend_verification_failed')) {
+      return 'No pudimos validar la compra todavia. Intenta restaurar o reintentar en unos minutos.';
     }
     return null;
   }

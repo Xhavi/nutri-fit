@@ -34,13 +34,18 @@ class _AddEditMealPageState extends ConsumerState<AddEditMealPage> {
   void initState() {
     super.initState();
     final MealEntry? entry = widget.entry;
-    final FoodItem? firstFood = entry?.foodItems.isNotEmpty == true ? entry!.foodItems.first : null;
+    final FoodItem? firstFood =
+        entry?.foodItems.isNotEmpty == true ? entry!.foodItems.first : null;
     _mealType = entry?.mealType ?? MealType.breakfast;
     _foodController = TextEditingController(text: firstFood?.name ?? '');
-    _caloriesController = TextEditingController(text: firstFood?.calories.toStringAsFixed(0) ?? '');
-    _proteinController = TextEditingController(text: firstFood?.protein.toStringAsFixed(0) ?? '');
-    _carbsController = TextEditingController(text: firstFood?.carbs.toStringAsFixed(0) ?? '');
-    _fatController = TextEditingController(text: firstFood?.fat.toStringAsFixed(0) ?? '');
+    _caloriesController = TextEditingController(
+        text: firstFood?.calories.toStringAsFixed(0) ?? '');
+    _proteinController = TextEditingController(
+        text: firstFood?.protein.toStringAsFixed(0) ?? '');
+    _carbsController =
+        TextEditingController(text: firstFood?.carbs.toStringAsFixed(0) ?? '');
+    _fatController =
+        TextEditingController(text: firstFood?.fat.toStringAsFixed(0) ?? '');
     _notesController = TextEditingController(text: entry?.notes ?? '');
   }
 
@@ -58,13 +63,37 @@ class _AddEditMealPageState extends ConsumerState<AddEditMealPage> {
   Future<void> _submit() async {
     final String foodName = _foodController.text.trim();
     if (foodName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content:
+                Text('Ingresa al menos un alimento para guardar la comida.')),
+      );
       return;
     }
 
-    final double calories = double.tryParse(_caloriesController.text.trim()) ?? 0;
-    final double protein = double.tryParse(_proteinController.text.trim()) ?? 0;
-    final double carbs = double.tryParse(_carbsController.text.trim()) ?? 0;
-    final double fat = double.tryParse(_fatController.text.trim()) ?? 0;
+    final double? calories = _parseOptionalMetric(_caloriesController);
+    final double? protein = _parseOptionalMetric(_proteinController);
+    final double? carbs = _parseOptionalMetric(_carbsController);
+    final double? fat = _parseOptionalMetric(_fatController);
+
+    if (calories == null || protein == null || carbs == null || fat == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content:
+              Text('Ingresa valores numericos validos para calorias y macros.'),
+        ),
+      );
+      return;
+    }
+
+    if (calories < 0 || protein < 0 || carbs < 0 || fat < 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Las calorias y macros no pueden ser negativas.'),
+        ),
+      );
+      return;
+    }
 
     final FoodItem food = FoodItem(
       id: (widget.entry != null && widget.entry!.foodItems.isNotEmpty)
@@ -78,22 +107,35 @@ class _AddEditMealPageState extends ConsumerState<AddEditMealPage> {
     );
 
     await ref.read(nutritionControllerProvider).saveMealEntry(
-      existingId: widget.entry?.id,
-      mealType: _mealType,
-      date: widget.selectedDate,
-      foodItems: <FoodItem>[food],
-      notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
-    );
+          existingId: widget.entry?.id,
+          mealType: _mealType,
+          date: widget.selectedDate,
+          foodItems: <FoodItem>[food],
+          notes: _notesController.text.trim().isEmpty
+              ? null
+              : _notesController.text.trim(),
+        );
 
     if (mounted) {
       Navigator.of(context).pop();
     }
   }
 
+  double? _parseOptionalMetric(TextEditingController controller) {
+    final String raw = controller.text.trim().replaceAll(',', '.');
+    if (raw.isEmpty) {
+      return 0;
+    }
+
+    return double.tryParse(raw);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.entry == null ? 'Agregar comida' : 'Editar comida')),
+      appBar: AppBar(
+          title:
+              Text(widget.entry == null ? 'Agregar comida' : 'Editar comida')),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -158,7 +200,10 @@ class _AddEditMealPageState extends ConsumerState<AddEditMealPage> {
               ],
             ),
             const SizedBox(height: 12),
-            AppTextField(label: 'Notas (opcional)', controller: _notesController, maxLines: 2),
+            AppTextField(
+                label: 'Notas (opcional)',
+                controller: _notesController,
+                maxLines: 2),
             const SizedBox(height: 20),
             ElevatedButton(onPressed: _submit, child: const Text('Guardar')),
           ],

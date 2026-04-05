@@ -44,7 +44,8 @@ class _EditHealthProfilePageState extends State<EditHealthProfilePage> {
       _ageController.text = profile.userProfile.age.toString();
       _heightController.text = profile.userProfile.heightCm.toStringAsFixed(0);
       _weightController.text = profile.userProfile.weightKg.toStringAsFixed(1);
-      _targetWeightController.text = profile.goals.targetWeightKg?.toStringAsFixed(1) ?? '';
+      _targetWeightController.text =
+          profile.goals.targetWeightKg?.toStringAsFixed(1) ?? '';
       _sex = profile.userProfile.sex;
       _activityLevel = profile.userProfile.activityLevel;
       _goal = profile.goals.primaryGoal;
@@ -74,18 +75,48 @@ class _EditHealthProfilePageState extends State<EditHealthProfilePage> {
   }
 
   Future<void> _save() async {
+    final String name = _nameController.text.trim();
+    final int? age = int.tryParse(_ageController.text.trim());
+    final double? heightCm = _parseDecimal(_heightController);
+    final double? weightKg = _parseDecimal(_weightController);
+    final double? targetWeightKg = _targetWeightController.text.trim().isEmpty
+        ? null
+        : _parseDecimal(_targetWeightController);
+
+    final bool hasInvalidTargetWeight =
+        _targetWeightController.text.trim().isNotEmpty &&
+            (targetWeightKg == null || targetWeightKg <= 0);
+
+    if (name.isEmpty ||
+        age == null ||
+        age <= 0 ||
+        heightCm == null ||
+        heightCm <= 0 ||
+        weightKg == null ||
+        weightKg <= 0 ||
+        hasInvalidTargetWeight) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Completa nombre, edad, altura y peso con valores validos antes de guardar.',
+          ),
+        ),
+      );
+      return;
+    }
+
     final WellnessProfile profile = WellnessProfile(
       userProfile: UserHealthProfile(
-        name: _nameController.text.trim(),
-        age: int.tryParse(_ageController.text) ?? 0,
+        name: name,
+        age: age,
         sex: _sex,
-        heightCm: double.tryParse(_heightController.text) ?? 0,
-        weightKg: double.tryParse(_weightController.text) ?? 0,
+        heightCm: heightCm,
+        weightKg: weightKg,
         activityLevel: _activityLevel,
       ),
       goals: HealthGoals(
         primaryGoal: _goal,
-        targetWeightKg: double.tryParse(_targetWeightController.text),
+        targetWeightKg: targetWeightKg,
       ),
       nutritionPreferences: NutritionPreferences(
         dietaryPreference: _dietaryPreference,
@@ -103,6 +134,10 @@ class _EditHealthProfilePageState extends State<EditHealthProfilePage> {
       const SnackBar(content: Text('Perfil y objetivos guardados.')),
     );
     Navigator.of(context).pop();
+  }
+
+  double? _parseDecimal(TextEditingController controller) {
+    return double.tryParse(controller.text.trim().replaceAll(',', '.'));
   }
 
   @override
@@ -126,10 +161,10 @@ class _EditHealthProfilePageState extends State<EditHealthProfilePage> {
             ),
             const SizedBox(height: 12),
             _enumDropdown<BiologicalSex>(
-              label: 'Sexo biológico',
+              label: 'Sexo biologico',
               value: _sex,
               values: BiologicalSex.values,
-              itemLabel: (BiologicalSex value) => value.name,
+              itemLabel: (BiologicalSex value) => value.label,
               onChanged: (BiologicalSex value) => setState(() => _sex = value),
             ),
             const SizedBox(height: 12),
@@ -142,7 +177,8 @@ class _EditHealthProfilePageState extends State<EditHealthProfilePage> {
             AppTextField(
               label: 'Peso (kg)',
               controller: _weightController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
             ),
             const SizedBox(height: 12),
             _enumDropdown<ActivityLevel>(
@@ -150,7 +186,8 @@ class _EditHealthProfilePageState extends State<EditHealthProfilePage> {
               value: _activityLevel,
               values: ActivityLevel.values,
               itemLabel: (ActivityLevel value) => value.label,
-              onChanged: (ActivityLevel value) => setState(() => _activityLevel = value),
+              onChanged: (ActivityLevel value) =>
+                  setState(() => _activityLevel = value),
             ),
             const SizedBox(height: 12),
             _enumDropdown<PrimaryWellnessGoal>(
@@ -158,30 +195,35 @@ class _EditHealthProfilePageState extends State<EditHealthProfilePage> {
               value: _goal,
               values: PrimaryWellnessGoal.values,
               itemLabel: (PrimaryWellnessGoal value) => value.label,
-              onChanged: (PrimaryWellnessGoal value) => setState(() => _goal = value),
+              onChanged: (PrimaryWellnessGoal value) =>
+                  setState(() => _goal = value),
             ),
             const SizedBox(height: 12),
             AppTextField(
               label: 'Peso objetivo (kg, opcional)',
               controller: _targetWeightController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
             ),
             const SizedBox(height: 12),
             _enumDropdown<DietaryPreference>(
               label: 'Preferencia alimentaria',
               value: _dietaryPreference,
               values: DietaryPreference.values,
-              itemLabel: (DietaryPreference value) => value.name,
+              itemLabel: (DietaryPreference value) => value.label,
               onChanged: (DietaryPreference value) =>
                   setState(() => _dietaryPreference = value),
             ),
             const SizedBox(height: 12),
-            Text('Restricciones', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'Restricciones',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             ...DietaryRestriction.values.map((DietaryRestriction restriction) {
               return CheckboxListTile(
                 dense: true,
                 contentPadding: EdgeInsets.zero,
-                title: Text(restriction.name),
+                title: Text(restriction.label),
                 value: _restrictions.contains(restriction),
                 onChanged: (bool? checked) {
                   setState(() {
@@ -196,7 +238,7 @@ class _EditHealthProfilePageState extends State<EditHealthProfilePage> {
             }),
             const SizedBox(height: 20),
             const Text(
-              'Aviso: esta configuración es para bienestar general. No reemplaza evaluación médica.',
+              'Aviso: esta configuracion es para bienestar general. No reemplaza evaluacion medica.',
             ),
             const SizedBox(height: 20),
             AppButton(label: 'Guardar perfil', onPressed: _save),

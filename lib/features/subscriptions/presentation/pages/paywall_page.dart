@@ -13,6 +13,19 @@ class PaywallPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final SubscriptionState state = ref.watch(subscriptionStateProvider);
     final controller = ref.read(subscriptionControllerProvider);
+    final bool canPurchase =
+        !state.isLoading && !state.hasPremium && state.plan != null;
+    final String productLabel = state.plan == null
+        ? 'Producto no disponible todavia en Play Console para este entorno.'
+        : '${state.plan!.title} · ${state.plan!.priceLabel}';
+    final String skuLabel = state.plan == null
+        ? 'SKU pendiente de configuracion'
+        : 'SKU: ${state.plan!.sku}';
+    final String billingLabel = state.plan == null
+        ? 'Configura el producto en Play Console para habilitar compras.'
+        : (state.plan!.autoRenewing
+            ? 'Renovacion automatica ${state.plan!.billingPeriod}'
+            : state.plan!.billingPeriod);
 
     return Scaffold(
       appBar: AppBar(title: const Text('NutriFit AI Premium')),
@@ -28,19 +41,18 @@ class PaywallPage extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text('Suscripción mensual IA', style: Theme.of(context).textTheme.titleMedium),
-                    const SizedBox(height: 6),
                     Text(
-                      state.plan == null
-                          ? 'Producto no disponible todavía en Play Console para este entorno.'
-                          : '${state.plan!.title} · ${state.plan!.priceLabel}',
+                      'Suscripcion mensual IA',
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
+                    const SizedBox(height: 6),
+                    Text(productLabel),
                     const SizedBox(height: 4),
-                    const Text('SKU: nutrifit_ai_monthly_499'),
-                    const Text('Renovación automática mensual'),
+                    Text(skuLabel),
+                    Text(billingLabel),
                     const SizedBox(height: 8),
                     Text(
-                      'Incluye funcionalidades premium de IA (chat en V1). La cuota de voz queda modelada para próximas versiones.',
+                      'Incluye chat premium y conversacion por voz con cuotas mensuales para ambas funciones.',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
@@ -65,7 +77,7 @@ class PaywallPage extends ConsumerWidget {
             ],
             const SizedBox(height: 20),
             FilledButton.icon(
-              onPressed: state.isLoading ? null : controller.purchase,
+              onPressed: canPurchase ? controller.purchase : null,
               icon: state.isLoading
                   ? const SizedBox(
                       width: 18,
@@ -73,7 +85,9 @@ class PaywallPage extends ConsumerWidget {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.workspace_premium_rounded),
-              label: const Text('Activar AI Premium'),
+              label: Text(
+                state.hasPremium ? 'AI Premium activo' : 'Activar AI Premium',
+              ),
             ),
             const SizedBox(height: 10),
             OutlinedButton(

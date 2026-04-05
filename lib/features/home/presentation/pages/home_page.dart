@@ -2,81 +2,137 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_router.dart';
+import '../../../../core/services/local_storage_service.dart';
 import '../../../../shared/layouts/internal_base_layout.dart';
+import '../../../profile/data/health_profile_repository.dart';
+import '../../../profile/domain/models/health_profile_models.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    const _DashboardSummary summary = _DashboardSummary(
-      userName: 'Sofía',
-      objectiveLabel: 'Déficit moderado para recomposición corporal',
-      objectiveProgress: 0.68,
-      consumedCalories: 1680,
-      caloriesTarget: 2100,
-      proteinGrams: 122,
-      carbsGrams: 165,
-      fatGrams: 58,
-      waterMl: 1750,
-      waterTargetMl: 2500,
-      activeMinutes: 42,
-      activeMinutesTarget: 60,
-      workoutsCompleted: 1,
-      workoutsTarget: 2,
-      steps: 8314,
-      stepsTarget: 10000,
-    );
+  State<HomePage> createState() => _HomePageState();
+}
 
-    return InternalBaseLayout(
-      title: 'Inicio',
-      currentIndex: 0,
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            _GreetingCard(summary: summary),
-            const SizedBox(height: 16),
-            _ObjectiveCard(summary: summary),
-            const SizedBox(height: 16),
-            _NutritionSummaryCard(summary: summary),
-            const SizedBox(height: 16),
-            _WaterSummaryCard(summary: summary),
-            const SizedBox(height: 16),
-            _ActivitySummaryCard(summary: summary),
-            const SizedBox(height: 20),
-            Text('Accesos rápidos', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
+class _HomePageState extends State<HomePage> {
+  static const _DashboardSummary _fallbackSummary = _DashboardSummary(
+    userName: 'Sofia',
+    objectiveLabel: 'Deficit moderado para perdida de grasa',
+    objectiveProgress: 0.68,
+    consumedCalories: 1680,
+    caloriesTarget: 2100,
+    proteinGrams: 122,
+    carbsGrams: 165,
+    fatGrams: 58,
+    waterMl: 1750,
+    waterTargetMl: 2500,
+    activeMinutes: 42,
+    activeMinutesTarget: 60,
+    workoutsCompleted: 1,
+    workoutsTarget: 2,
+    steps: 8314,
+    stepsTarget: 10000,
+  );
+
+  late final Future<_DashboardSummary> _summaryFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _summaryFuture = _loadSummary();
+  }
+
+  Future<_DashboardSummary> _loadSummary() async {
+    final HealthProfileRepository repository = HealthProfileRepository(
+      localStorage: LocalStorageService(),
+    );
+    final WellnessProfile? profile = await repository.loadProfile();
+
+    if (profile == null || !profile.isComplete) {
+      return _fallbackSummary;
+    }
+
+    return _fallbackSummary.copyWith(
+      userName: profile.userProfile.name,
+      objectiveLabel: _objectiveLabelFor(profile.goals.primaryGoal),
+    );
+  }
+
+  String _objectiveLabelFor(PrimaryWellnessGoal goal) {
+    switch (goal) {
+      case PrimaryWellnessGoal.loseWeight:
+        return 'Deficit moderado para perdida de grasa';
+      case PrimaryWellnessGoal.maintainWeight:
+        return 'Mantenimiento sostenible del peso';
+      case PrimaryWellnessGoal.gainMuscle:
+        return 'Superavit controlado para ganancia muscular';
+      case PrimaryWellnessGoal.improveHabits:
+        return 'Mejora de habitos diarios';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<_DashboardSummary>(
+      future: _summaryFuture,
+      builder:
+          (BuildContext context, AsyncSnapshot<_DashboardSummary> snapshot) {
+        final _DashboardSummary summary = snapshot.data ?? _fallbackSummary;
+
+        return InternalBaseLayout(
+          title: 'Inicio',
+          currentIndex: 0,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                _QuickAccessChip(
-                  label: 'Nutrición',
-                  icon: Icons.restaurant_menu_rounded,
-                  onTap: () => context.go(AppRoutePaths.nutrition),
+                _GreetingCard(summary: summary),
+                const SizedBox(height: 16),
+                _ObjectiveCard(summary: summary),
+                const SizedBox(height: 16),
+                _NutritionSummaryCard(summary: summary),
+                const SizedBox(height: 16),
+                _WaterSummaryCard(summary: summary),
+                const SizedBox(height: 16),
+                _ActivitySummaryCard(summary: summary),
+                const SizedBox(height: 20),
+                Text(
+                  'Accesos rapidos',
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
-                _QuickAccessChip(
-                  label: 'Ejercicio',
-                  icon: Icons.fitness_center_rounded,
-                  onTap: () => context.go(AppRoutePaths.exercise),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: <Widget>[
+                    _QuickAccessChip(
+                      label: 'Nutricion',
+                      icon: Icons.restaurant_menu_rounded,
+                      onTap: () => context.go(AppRoutePaths.nutrition),
+                    ),
+                    _QuickAccessChip(
+                      label: 'Ejercicio',
+                      icon: Icons.fitness_center_rounded,
+                      onTap: () => context.go(AppRoutePaths.exercise),
+                    ),
+                    _QuickAccessChip(
+                      label: 'Progreso',
+                      icon: Icons.query_stats_rounded,
+                      onTap: () => context.go(AppRoutePaths.progress),
+                    ),
+                    _QuickAccessChip(
+                      label: 'AI Coach',
+                      icon: Icons.smart_toy_rounded,
+                      onTap: () => context.go(AppRoutePaths.aiCoach),
+                    ),
+                  ],
                 ),
-                _QuickAccessChip(
-                  label: 'Progreso',
-                  icon: Icons.query_stats_rounded,
-                  onTap: () => context.go(AppRoutePaths.progress),
-                ),
-                _QuickAccessChip(
-                  label: 'AI Coach',
-                  icon: Icons.smart_toy_rounded,
-                  onTap: () => context.go(AppRoutePaths.aiCoach),
-                ),
+                const SizedBox(height: 8),
               ],
             ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -89,7 +145,7 @@ class _GreetingCard extends StatelessWidget {
   String _buildGreeting() {
     final int hour = DateTime.now().hour;
     if (hour < 12) {
-      return 'Buenos días';
+      return 'Buenos dias';
     }
     if (hour < 19) {
       return 'Buenas tardes';
@@ -104,7 +160,9 @@ class _GreetingCard extends StatelessWidget {
         contentPadding: const EdgeInsets.all(16),
         leading: const CircleAvatar(child: Icon(Icons.waving_hand_rounded)),
         title: Text('${_buildGreeting()}, ${summary.userName}'),
-        subtitle: const Text('Así va tu día: foco, constancia y decisiones saludables.'),
+        subtitle: const Text(
+          'Asi va tu dia: foco, constancia y decisiones saludables.',
+        ),
       ),
     );
   }
@@ -124,7 +182,10 @@ class _ObjectiveCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text('Objetivo actual', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'Objetivo actual',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 8),
             Text(summary.objectiveLabel),
             const SizedBox(height: 12),
@@ -152,11 +213,17 @@ class _NutritionSummaryCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text('Calorías y macros', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'Calorias y macros',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 8),
-            Text('${summary.consumedCalories} / ${summary.caloriesTarget} kcal'),
+            Text(
+                '${summary.consumedCalories} / ${summary.caloriesTarget} kcal'),
             const SizedBox(height: 8),
-            LinearProgressIndicator(value: summary.consumedCalories / summary.caloriesTarget),
+            LinearProgressIndicator(
+              value: summary.consumedCalories / summary.caloriesTarget,
+            ),
             const SizedBox(height: 8),
             Text(
               caloriesLeft >= 0
@@ -168,8 +235,12 @@ class _NutritionSummaryCard extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: <Widget>[
-                _MacroTag(label: 'Proteínas', value: '${summary.proteinGrams} g'),
-                _MacroTag(label: 'Carbohidratos', value: '${summary.carbsGrams} g'),
+                _MacroTag(
+                    label: 'Proteinas', value: '${summary.proteinGrams} g'),
+                _MacroTag(
+                  label: 'Carbohidratos',
+                  value: '${summary.carbsGrams} g',
+                ),
                 _MacroTag(label: 'Grasas', value: '${summary.fatGrams} g'),
               ],
             ),
@@ -219,17 +290,24 @@ class _ActivitySummaryCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text('Actividad y ejercicio', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'Actividad y ejercicio',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 12),
             _MetricRow(
               label: 'Minutos activos',
-              value: '${summary.activeMinutes}/${summary.activeMinutesTarget} min',
+              value:
+                  '${summary.activeMinutes}/${summary.activeMinutesTarget} min',
             ),
             _MetricRow(
               label: 'Entrenamientos',
               value: '${summary.workoutsCompleted}/${summary.workoutsTarget}',
             ),
-            _MetricRow(label: 'Pasos', value: '${summary.steps}/${summary.stepsTarget}'),
+            _MetricRow(
+              label: 'Pasos',
+              value: '${summary.steps}/${summary.stepsTarget}',
+            ),
           ],
         ),
       ),
@@ -258,7 +336,11 @@ class _MetricRow extends StatelessWidget {
 }
 
 class _QuickAccessChip extends StatelessWidget {
-  const _QuickAccessChip({required this.label, required this.icon, required this.onTap});
+  const _QuickAccessChip({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
 
   final String label;
   final IconData icon;
@@ -326,4 +408,28 @@ class _DashboardSummary {
   final int workoutsTarget;
   final int steps;
   final int stepsTarget;
+
+  _DashboardSummary copyWith({
+    String? userName,
+    String? objectiveLabel,
+  }) {
+    return _DashboardSummary(
+      userName: userName ?? this.userName,
+      objectiveLabel: objectiveLabel ?? this.objectiveLabel,
+      objectiveProgress: objectiveProgress,
+      consumedCalories: consumedCalories,
+      caloriesTarget: caloriesTarget,
+      proteinGrams: proteinGrams,
+      carbsGrams: carbsGrams,
+      fatGrams: fatGrams,
+      waterMl: waterMl,
+      waterTargetMl: waterTargetMl,
+      activeMinutes: activeMinutes,
+      activeMinutesTarget: activeMinutesTarget,
+      workoutsCompleted: workoutsCompleted,
+      workoutsTarget: workoutsTarget,
+      steps: steps,
+      stepsTarget: stepsTarget,
+    );
+  }
 }

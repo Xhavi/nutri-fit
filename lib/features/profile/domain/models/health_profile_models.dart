@@ -10,7 +10,12 @@ enum ActivityLevel {
   extraActive,
 }
 
-enum PrimaryWellnessGoal { loseWeight, maintainWeight, gainMuscle, improveHabits }
+enum PrimaryWellnessGoal {
+  loseWeight,
+  maintainWeight,
+  gainMuscle,
+  improveHabits
+}
 
 enum DietaryPreference { omnivore, vegetarian, vegan, pescatarian, keto }
 
@@ -20,6 +25,19 @@ enum DietaryRestriction {
   nutAllergy,
   shellfishAllergy,
   lowSodium,
+}
+
+extension BiologicalSexX on BiologicalSex {
+  String get label {
+    switch (this) {
+      case BiologicalSex.female:
+        return 'Femenino';
+      case BiologicalSex.male:
+        return 'Masculino';
+      case BiologicalSex.other:
+        return 'Otro';
+    }
+  }
 }
 
 extension ActivityLevelX on ActivityLevel {
@@ -58,13 +76,47 @@ extension PrimaryWellnessGoalX on PrimaryWellnessGoal {
   String get label {
     switch (this) {
       case PrimaryWellnessGoal.loseWeight:
-        return 'Pérdida de grasa';
+        return 'Perdida de grasa';
       case PrimaryWellnessGoal.maintainWeight:
         return 'Mantenimiento';
       case PrimaryWellnessGoal.gainMuscle:
         return 'Ganancia muscular';
       case PrimaryWellnessGoal.improveHabits:
-        return 'Mejora de hábitos';
+        return 'Mejora de habitos';
+    }
+  }
+}
+
+extension DietaryPreferenceX on DietaryPreference {
+  String get label {
+    switch (this) {
+      case DietaryPreference.omnivore:
+        return 'Omnivora';
+      case DietaryPreference.vegetarian:
+        return 'Vegetariana';
+      case DietaryPreference.vegan:
+        return 'Vegana';
+      case DietaryPreference.pescatarian:
+        return 'Pescetariana';
+      case DietaryPreference.keto:
+        return 'Keto';
+    }
+  }
+}
+
+extension DietaryRestrictionX on DietaryRestriction {
+  String get label {
+    switch (this) {
+      case DietaryRestriction.lactoseIntolerance:
+        return 'Intolerancia a la lactosa';
+      case DietaryRestriction.glutenFree:
+        return 'Sin gluten';
+      case DietaryRestriction.nutAllergy:
+        return 'Alergia a frutos secos';
+      case DietaryRestriction.shellfishAllergy:
+        return 'Alergia a mariscos';
+      case DietaryRestriction.lowSodium:
+        return 'Bajo en sodio';
     }
   }
 }
@@ -87,21 +139,27 @@ class UserHealthProfile {
   final ActivityLevel activityLevel;
 
   double get safeHeightMeters => max(heightCm / 100, 0.01);
+  bool get hasCoreMetrics =>
+      name.trim().isNotEmpty && age > 0 && heightCm > 0 && weightKg > 0;
 
   Map<String, dynamic> toJson() => <String, dynamic>{
-    'name': name,
-    'age': age,
-    'sex': sex.name,
-    'heightCm': heightCm,
-    'weightKg': weightKg,
-    'activityLevel': activityLevel.name,
-  };
+        'name': name,
+        'age': age,
+        'sex': sex.name,
+        'heightCm': heightCm,
+        'weightKg': weightKg,
+        'activityLevel': activityLevel.name,
+      };
 
   factory UserHealthProfile.fromJson(Map<String, dynamic> json) {
     return UserHealthProfile(
       name: json['name'] as String? ?? '',
       age: (json['age'] as num?)?.toInt() ?? 0,
-      sex: _enumByName(BiologicalSex.values, json['sex'] as String?, BiologicalSex.other),
+      sex: _enumByName(
+        BiologicalSex.values,
+        json['sex'] as String?,
+        BiologicalSex.other,
+      ),
       heightCm: (json['heightCm'] as num?)?.toDouble() ?? 0,
       weightKg: (json['weightKg'] as num?)?.toDouble() ?? 0,
       activityLevel: _enumByName(
@@ -120,9 +178,9 @@ class HealthGoals {
   final double? targetWeightKg;
 
   Map<String, dynamic> toJson() => <String, dynamic>{
-    'primaryGoal': primaryGoal.name,
-    'targetWeightKg': targetWeightKg,
-  };
+        'primaryGoal': primaryGoal.name,
+        'targetWeightKg': targetWeightKg,
+      };
 
   factory HealthGoals.fromJson(Map<String, dynamic> json) {
     return HealthGoals(
@@ -146,9 +204,10 @@ class NutritionPreferences {
   final List<DietaryRestriction> restrictions;
 
   Map<String, dynamic> toJson() => <String, dynamic>{
-    'dietaryPreference': dietaryPreference.name,
-    'restrictions': restrictions.map((DietaryRestriction r) => r.name).toList(),
-  };
+        'dietaryPreference': dietaryPreference.name,
+        'restrictions':
+            restrictions.map((DietaryRestriction value) => value.name).toList(),
+      };
 
   factory NutritionPreferences.fromJson(Map<String, dynamic> json) {
     final List<dynamic> restrictionValues =
@@ -163,8 +222,11 @@ class NutritionPreferences {
       restrictions: restrictionValues
           .whereType<String>()
           .map(
-            (String value) =>
-                _enumByName(DietaryRestriction.values, value, DietaryRestriction.lowSodium),
+            (String value) => _enumByName(
+              DietaryRestriction.values,
+              value,
+              DietaryRestriction.lowSodium,
+            ),
           )
           .toList(),
     );
@@ -182,11 +244,13 @@ class WellnessProfile {
   final HealthGoals goals;
   final NutritionPreferences nutritionPreferences;
 
+  bool get isComplete => userProfile.hasCoreMetrics;
+
   Map<String, dynamic> toJson() => <String, dynamic>{
-    'userProfile': userProfile.toJson(),
-    'goals': goals.toJson(),
-    'nutritionPreferences': nutritionPreferences.toJson(),
-  };
+        'userProfile': userProfile.toJson(),
+        'goals': goals.toJson(),
+        'nutritionPreferences': nutritionPreferences.toJson(),
+      };
 
   factory WellnessProfile.fromJson(Map<String, dynamic> json) {
     return WellnessProfile(
@@ -197,12 +261,16 @@ class WellnessProfile {
         json['goals'] as Map<String, dynamic>? ?? <String, dynamic>{},
       ),
       nutritionPreferences: NutritionPreferences.fromJson(
-        json['nutritionPreferences'] as Map<String, dynamic>? ?? <String, dynamic>{},
+        json['nutritionPreferences'] as Map<String, dynamic>? ??
+            <String, dynamic>{},
       ),
     );
   }
 }
 
 T _enumByName<T extends Enum>(List<T> values, String? raw, T fallback) {
-  return values.firstWhere((T value) => value.name == raw, orElse: () => fallback);
+  return values.firstWhere(
+    (T value) => value.name == raw,
+    orElse: () => fallback,
+  );
 }

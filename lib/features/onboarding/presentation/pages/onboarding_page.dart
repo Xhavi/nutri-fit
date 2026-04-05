@@ -22,7 +22,8 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   final TextEditingController _ageController = TextEditingController();
   final TextEditingController _weightController = TextEditingController();
   final TextEditingController _heightController = TextEditingController();
-  final TextEditingController _foodRestrictionsController = TextEditingController();
+  final TextEditingController _foodRestrictionsController =
+      TextEditingController();
 
   String _sex = 'Prefiero no decir';
   String _goal = 'Perder grasa';
@@ -41,12 +42,17 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
 
   Future<void> _submit() async {
     final int? age = int.tryParse(_ageController.text.trim());
-    final double? weight = double.tryParse(_weightController.text.trim());
-    final double? height = double.tryParse(_heightController.text.trim());
+    final double? weight = _parseDecimal(_weightController.text);
+    final double? height = _parseDecimal(_heightController.text);
 
-    if (_nameController.text.trim().isEmpty || age == null || weight == null || height == null) {
+    if (_nameController.text.trim().isEmpty ||
+        age == null ||
+        weight == null ||
+        height == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Completa nombre, edad, peso y talla para continuar.')),
+        const SnackBar(
+            content:
+                Text('Completa nombre, edad, peso y talla para continuar.')),
       );
       return;
     }
@@ -68,6 +74,10 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     if (mounted) {
       context.go(AppRoutePaths.home);
     }
+  }
+
+  double? _parseDecimal(String raw) {
+    return double.tryParse(raw.trim().replaceAll(',', '.'));
   }
 
   @override
@@ -99,20 +109,27 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
             _DropdownField(
               label: 'Sexo',
               value: _sex,
-              values: const <String>['Femenino', 'Masculino', 'No binario', 'Prefiero no decir'],
+              values: const <String>[
+                'Femenino',
+                'Masculino',
+                'No binario',
+                'Prefiero no decir'
+              ],
               onChanged: (String value) => setState(() => _sex = value),
             ),
             const SizedBox(height: 12),
             AppTextField(
               label: 'Peso (kg)',
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
               prefixIcon: Icons.monitor_weight_outlined,
               controller: _weightController,
             ),
             const SizedBox(height: 12),
             AppTextField(
               label: 'Talla (cm)',
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
               prefixIcon: Icons.height,
               controller: _heightController,
             ),
@@ -133,7 +150,8 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
               label: 'Nivel de actividad',
               value: _activityLevel,
               values: const <String>['Bajo', 'Moderado', 'Alto', 'Muy alto'],
-              onChanged: (String value) => setState(() => _activityLevel = value),
+              onChanged: (String value) =>
+                  setState(() => _activityLevel = value),
             ),
             const SizedBox(height: 12),
             AppTextField(
@@ -171,13 +189,15 @@ class _DropdownField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InputDecorator(
-      decoration: InputDecoration(labelText: label, border: const OutlineInputBorder()),
+      decoration:
+          InputDecoration(labelText: label, border: const OutlineInputBorder()),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: value,
           isExpanded: true,
           items: values
-              .map((String item) => DropdownMenuItem<String>(value: item, child: Text(item)))
+              .map((String item) =>
+                  DropdownMenuItem<String>(value: item, child: Text(item)))
               .toList(),
           onChanged: (String? selected) {
             if (selected != null) {

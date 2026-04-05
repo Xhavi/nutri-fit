@@ -20,13 +20,15 @@ class _GoalsReviewPageState extends State<GoalsReviewPage> {
 
   WellnessProfile? _profile;
   WellnessCalculationResult? _result;
+  String? _emptyStateDescription;
   bool _loading = true;
 
   @override
   void initState() {
     super.initState();
     _repository = HealthProfileRepository(localStorage: LocalStorageService());
-    _buildPlanUseCase = BuildWellnessPlanUseCase(service: WellnessCalculationService());
+    _buildPlanUseCase =
+        BuildWellnessPlanUseCase(service: WellnessCalculationService());
     _load();
   }
 
@@ -38,7 +40,18 @@ class _GoalsReviewPageState extends State<GoalsReviewPage> {
 
     setState(() {
       _profile = loaded;
-      _result = loaded == null ? null : _buildPlanUseCase.execute(loaded);
+      if (loaded == null) {
+        _result = null;
+        _emptyStateDescription =
+            'Edita tu perfil primero para calcular metas base.';
+      } else if (!loaded.isComplete) {
+        _result = null;
+        _emptyStateDescription =
+            'Completa nombre, edad, altura y peso en tu perfil para calcular metas base.';
+      } else {
+        _result = _buildPlanUseCase.execute(loaded);
+        _emptyStateDescription = null;
+      }
       _loading = false;
     });
   }
@@ -50,13 +63,15 @@ class _GoalsReviewPageState extends State<GoalsReviewPage> {
     }
 
     if (_profile == null || _result == null) {
-      return const Scaffold(
+      return Scaffold(
+        appBar: AppBar(title: const Text('RevisiÃ³n de objetivos')),
         body: SafeArea(
           child: Padding(
-            padding: EdgeInsets.all(20),
+            padding: const EdgeInsets.all(20),
             child: EmptyState(
-              title: 'Sin perfil cargado',
-              description: 'Edita tu perfil primero para calcular metas base.',
+              title: 'Perfil incompleto',
+              description: _emptyStateDescription ??
+                  'Edita tu perfil primero para calcular metas base.',
               icon: Icons.person_search_rounded,
             ),
           ),
@@ -73,7 +88,8 @@ class _GoalsReviewPageState extends State<GoalsReviewPage> {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: <Widget>[
-            Text('Perfil: ${profile.userProfile.name}', style: Theme.of(context).textTheme.titleLarge),
+            Text('Perfil: ${profile.userProfile.name}',
+                style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 12),
             Text('Objetivo principal: ${profile.goals.primaryGoal.label}'),
             const SizedBox(height: 12),
@@ -83,8 +99,10 @@ class _GoalsReviewPageState extends State<GoalsReviewPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text('IMC: ${result.bmi.toStringAsFixed(1)} (${result.bmiLabel})'),
-                    Text('Calorías mantenimiento: ${result.maintenanceCalories} kcal'),
+                    Text(
+                        'IMC: ${result.bmi.toStringAsFixed(1)} (${result.bmiLabel})'),
+                    Text(
+                        'Calorías mantenimiento: ${result.maintenanceCalories} kcal'),
                     Text('Calorías objetivo: ${result.targetCalories} kcal'),
                     const SizedBox(height: 8),
                     Text('Macros objetivo (g/día):'),
@@ -96,10 +114,12 @@ class _GoalsReviewPageState extends State<GoalsReviewPage> {
               ),
             ),
             const SizedBox(height: 16),
-            Text('Metas simples', style: Theme.of(context).textTheme.titleMedium),
+            Text('Metas simples',
+                style: Theme.of(context).textTheme.titleMedium),
             ...result.simpleGoalNotes.map((String note) => Text('• $note')),
             const SizedBox(height: 16),
-            Text('Advertencias y TODOs', style: Theme.of(context).textTheme.titleMedium),
+            Text('Advertencias y TODOs',
+                style: Theme.of(context).textTheme.titleMedium),
             ...result.warnings.map((String warning) => Text('• $warning')),
           ],
         ),

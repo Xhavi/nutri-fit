@@ -73,64 +73,91 @@ class _AiCoachPageState extends ConsumerState<AiCoachPage> {
       _scrollToBottom();
     });
 
+    final Widget messageList = state.messages.isEmpty
+        ? const _EmptyChatState()
+        : ListView.builder(
+            controller: _scrollController,
+            itemCount: state.messages.length + (state.isSending ? 1 : 0),
+            itemBuilder: (BuildContext context, int index) {
+              if (index >= state.messages.length) {
+                return const _AssistantLoadingBubble();
+              }
+
+              final AiCoachChatMessage message = state.messages[index];
+              return AiCoachMessageBubble(message: message);
+            },
+          );
+
+    final List<Widget> topSections = <Widget>[
+      _SafetyNoticeCard(
+        disclaimerVisible: state.disclaimerVisible,
+        usesMockBackend: state.usesMockBackend,
+        onDismiss: () =>
+            ref.read(aiCoachControllerProvider).dismissDisclaimer(),
+      ),
+      if (showAccessNotice)
+        _AccessNoticeCard(
+          message: _accessMessage(
+            chatAccess: chatAccess,
+            voiceAccess: voiceAccess,
+          ),
+          onOpenPaywall: () => context.push(AppRoutePaths.paywall),
+        ),
+      _QuotaIndicatorCard(chatAccess: chatAccess),
+      if (chatAccess.reason == 'monthly_quota_exceeded')
+        _QuotaExhaustedCard(
+          onOpenPaywall: () => context.push(AppRoutePaths.paywall),
+        ),
+      if (state.errorMessage != null)
+        _ErrorBanner(
+          message: state.errorMessage!,
+          onRetry: state.lastFailedInput == null
+              ? null
+              : () => ref.read(aiCoachControllerProvider).retryLastMessage(),
+        ),
+    ];
+
+    final bool compactLayout = MediaQuery.sizeOf(context).height < 760;
+
     return InternalBaseLayout(
       title: 'AI Coach',
       currentIndex: 4,
-      child: Column(
-        children: <Widget>[
-          _SafetyNoticeCard(
-            disclaimerVisible: state.disclaimerVisible,
-            usesMockBackend: state.usesMockBackend,
-            onDismiss: () => ref.read(aiCoachControllerProvider).dismissDisclaimer(),
-          ),
-          if (showAccessNotice)
-            _AccessNoticeCard(
-              message: _accessMessage(
-                chatAccess: chatAccess,
-                voiceAccess: voiceAccess,
-              ),
-              onOpenPaywall: () => context.push(AppRoutePaths.paywall),
+      child: compactLayout
+          ? ListView(
+              children: <Widget>[
+                ...topSections,
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 220,
+                  child: messageList,
+                ),
+                const SizedBox(height: 8),
+                _Composer(
+                  controller: _textController,
+                  isSending: state.isSending,
+                  enabled: canUseAiChat,
+                  onSend: _sendMessage,
+                ),
+                const SizedBox(height: 8),
+                VoiceTurnControls(enabled: canUseAiVoice),
+              ],
+            )
+          : Column(
+              children: <Widget>[
+                ...topSections,
+                const SizedBox(height: 8),
+                Expanded(child: messageList),
+                const SizedBox(height: 8),
+                _Composer(
+                  controller: _textController,
+                  isSending: state.isSending,
+                  enabled: canUseAiChat,
+                  onSend: _sendMessage,
+                ),
+                const SizedBox(height: 8),
+                VoiceTurnControls(enabled: canUseAiVoice),
+              ],
             ),
-          _QuotaIndicatorCard(chatAccess: chatAccess),
-          if (chatAccess.reason == 'monthly_quota_exceeded')
-            _QuotaExhaustedCard(
-              onOpenPaywall: () => context.push(AppRoutePaths.paywall),
-            ),
-          if (state.errorMessage != null)
-            _ErrorBanner(
-              message: state.errorMessage!,
-              onRetry: state.lastFailedInput == null
-                  ? null
-                  : () => ref.read(aiCoachControllerProvider).retryLastMessage(),
-            ),
-          const SizedBox(height: 8),
-          Expanded(
-            child: state.messages.isEmpty
-                ? const _EmptyChatState()
-                : ListView.builder(
-                    controller: _scrollController,
-                    itemCount: state.messages.length + (state.isSending ? 1 : 0),
-                    itemBuilder: (BuildContext context, int index) {
-                      if (index >= state.messages.length) {
-                        return const _AssistantLoadingBubble();
-                      }
-
-                      final AiCoachChatMessage message = state.messages[index];
-                      return AiCoachMessageBubble(message: message);
-                    },
-                  ),
-          ),
-          const SizedBox(height: 8),
-          _Composer(
-            controller: _textController,
-            isSending: state.isSending,
-            enabled: canUseAiChat,
-            onSend: _sendMessage,
-          ),
-          const SizedBox(height: 8),
-          VoiceTurnControls(enabled: canUseAiVoice),
-        ],
-      ),
     );
   }
 

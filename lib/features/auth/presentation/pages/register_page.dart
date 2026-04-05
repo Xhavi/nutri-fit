@@ -18,6 +18,8 @@ class RegisterPage extends ConsumerStatefulWidget {
 }
 
 class _RegisterPageState extends ConsumerState<RegisterPage> {
+  static final RegExp _emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -37,6 +39,12 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       return;
     }
 
+    final String? validationError = _validateInputs();
+    if (validationError != null) {
+      setState(() => _errorMessage = validationError);
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -44,9 +52,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
 
     try {
       await ref.read(sessionControllerProvider).register(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+          );
 
       if (mounted) {
         context.go(AppRoutePaths.onboarding);
@@ -62,6 +70,26 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     }
   }
 
+  String? _validateInputs() {
+    final String fullName = _nameController.text.trim();
+    final String email = _emailController.text.trim();
+    final String password = _passwordController.text;
+
+    if (fullName.isEmpty) {
+      return 'Ingresa tu nombre para crear la cuenta.';
+    }
+
+    if (email.isEmpty || !_emailPattern.hasMatch(email)) {
+      return 'Ingresa un correo electronico valido.';
+    }
+
+    if (password.length < 6) {
+      return 'La contrasena debe tener al menos 6 caracteres.';
+    }
+
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
@@ -71,8 +99,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             const SectionHeader(
-              title: 'Regístrate en NutriFit',
-              subtitle: 'Crea tu perfil para iniciar tu experiencia personalizada.',
+              title: 'Registrate en NutriFit',
+              subtitle:
+                  'Crea tu perfil para iniciar tu experiencia personalizada.',
             ),
             const SizedBox(height: 20),
             AppTextField(
@@ -82,7 +111,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
             ),
             const SizedBox(height: 12),
             AppTextField(
-              label: 'Correo electrónico',
+              label: 'Correo electronico',
               hintText: 'tu@email.com',
               prefixIcon: Icons.email_outlined,
               keyboardType: TextInputType.emailAddress,
@@ -90,14 +119,17 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
             ),
             const SizedBox(height: 12),
             AppTextField(
-              label: 'Contraseña',
+              label: 'Contrasena',
               obscureText: true,
               prefixIcon: Icons.lock_outline,
               controller: _passwordController,
             ),
             if (_errorMessage != null) ...<Widget>[
               const SizedBox(height: 12),
-              Text(_errorMessage!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              Text(
+                _errorMessage!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
             ],
             const SizedBox(height: 20),
             AppButton(

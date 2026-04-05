@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/voice_turn_controller.dart';
 import '../../application/voice_turn_state.dart';
+import '../../domain/models/voice_profile.dart';
 import '../../domain/models/voice_turn_models.dart';
 import '../controllers/ai_voice_providers.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class VoiceTurnControls extends ConsumerWidget {
   const VoiceTurnControls({this.enabled = true, super.key});
@@ -14,7 +15,8 @@ class VoiceTurnControls extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final VoiceTurnState state = ref.watch(voiceTurnStateProvider);
-    final VoiceTurnController controller = ref.read(voiceTurnControllerProvider);
+    final VoiceTurnController controller =
+        ref.read(voiceTurnControllerProvider);
 
     return Card(
       child: Padding(
@@ -22,29 +24,51 @@ class VoiceTurnControls extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text('Voz V2 (turnos)', style: Theme.of(context).textTheme.titleSmall),
+            Text(
+              'Voz V2 (turnos)',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
             const SizedBox(height: 6),
             Text(
               enabled
-                  ? 'Habla por turnos, recibe respuesta con perfil de voz y reproduce de nuevo cuando quieras.'
-                  : 'Bloqueado: activa AI Premium para usar conversación por voz.',
+                  ? 'Habla por turnos, recibe respuesta con perfil de voz y vuelve a reproducir cuando quieras.'
+                  : 'Bloqueado: activa AI Premium para usar conversacion por voz.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
               initialValue: state.selectedVoiceProfile.id,
+              isExpanded: true,
               decoration: const InputDecoration(
                 labelText: 'Perfil de voz',
                 prefixIcon: Icon(Icons.record_voice_over_rounded),
               ),
               items: state.availableProfiles
                   .map(
-                    (profile) => DropdownMenuItem<String>(
+                    (VoiceProfile profile) => DropdownMenuItem<String>(
                       value: profile.id,
-                      child: Text('${profile.label} • ${profile.description ?? ''}'),
+                      child: Text(
+                        _voiceProfileLabel(profile),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   )
                   .toList(growable: false),
+              selectedItemBuilder: (BuildContext context) {
+                return state.availableProfiles
+                    .map(
+                      (VoiceProfile profile) => Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          _voiceProfileLabel(profile),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    )
+                    .toList(growable: false);
+              },
               onChanged: !enabled
                   ? null
                   : (String? id) {
@@ -52,8 +76,9 @@ class VoiceTurnControls extends ConsumerWidget {
                         return;
                       }
 
-                      final selected = state.availableProfiles.firstWhere(
-                        (profile) => profile.id == id,
+                      final VoiceProfile selected =
+                          state.availableProfiles.firstWhere(
+                        (VoiceProfile profile) => profile.id == id,
                         orElse: () => state.selectedVoiceProfile,
                       );
                       controller.setVoiceProfile(selected);
@@ -62,20 +87,27 @@ class VoiceTurnControls extends ConsumerWidget {
             const SizedBox(height: 8),
             SwitchListTile.adaptive(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Reproducir automáticamente la respuesta'),
-              subtitle: const Text('Si está apagado, podrás escuchar manualmente con "Reproducir".'),
+              title: const Text('Reproducir automaticamente la respuesta'),
+              subtitle: const Text(
+                'Si esta apagado, podras escuchar manualmente con "Reproducir".',
+              ),
               value: state.autoplayEnabled,
               onChanged: enabled ? controller.setAutoplayEnabled : null,
             ),
             const SizedBox(height: 8),
             GestureDetector(
-              onLongPressStart: enabled ? (_) => controller.startRecording() : null,
-              onLongPressEnd: enabled ? (_) => controller.stopRecording() : null,
-              onLongPressCancel: enabled ? () => controller.cancelRecording() : null,
+              onLongPressStart:
+                  enabled ? (_) => controller.startRecording() : null,
+              onLongPressEnd:
+                  enabled ? (_) => controller.stopRecording() : null,
+              onLongPressCancel:
+                  enabled ? () => controller.cancelRecording() : null,
               child: SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: (!enabled || state.isBusy) ? null : () => controller.startRecording(),
+                  onPressed: (!enabled || state.isBusy)
+                      ? null
+                      : () => controller.startRecording(),
                   icon: Icon(
                     state.status == VoiceTurnStatus.recording
                         ? Icons.graphic_eq_rounded
@@ -95,16 +127,18 @@ class VoiceTurnControls extends ConsumerWidget {
               runSpacing: 8,
               children: <Widget>[
                 OutlinedButton.icon(
-                  onPressed: enabled && state.status == VoiceTurnStatus.recording
-                      ? () => controller.stopRecording()
-                      : null,
+                  onPressed:
+                      enabled && state.status == VoiceTurnStatus.recording
+                          ? () => controller.stopRecording()
+                          : null,
                   icon: const Icon(Icons.stop_rounded),
                   label: const Text('Detener y enviar'),
                 ),
                 OutlinedButton.icon(
-                  onPressed: enabled && state.status == VoiceTurnStatus.recording
-                      ? () => controller.cancelRecording()
-                      : null,
+                  onPressed:
+                      enabled && state.status == VoiceTurnStatus.recording
+                          ? () => controller.cancelRecording()
+                          : null,
                   icon: const Icon(Icons.close_rounded),
                   label: const Text('Cancelar'),
                 ),
@@ -116,13 +150,17 @@ class VoiceTurnControls extends ConsumerWidget {
                   label: const Text('Reintentar turno'),
                 ),
                 TextButton.icon(
-                  onPressed:
-                      enabled && state.lastResponse != null ? () => controller.replayLastResponse() : null,
+                  onPressed: enabled && state.lastResponse != null
+                      ? () => controller.replayLastResponse()
+                      : null,
                   icon: const Icon(Icons.replay_rounded),
                   label: const Text('Reproducir respuesta'),
                 ),
                 TextButton.icon(
-                  onPressed: enabled ? () => controller.stopPlayback() : null,
+                  onPressed:
+                      enabled && state.status == VoiceTurnStatus.playingAudio
+                          ? () => controller.stopPlayback()
+                          : null,
                   icon: const Icon(Icons.stop_circle_outlined),
                   label: const Text('Detener audio'),
                 ),
@@ -139,7 +177,7 @@ class VoiceTurnControls extends ConsumerWidget {
             if (state.lastResponse != null) ...<Widget>[
               const SizedBox(height: 10),
               Text(
-                'Última respuesta (${state.lastResponse!.voiceProfileUsed})',
+                'Ultima respuesta (${state.lastResponse!.voiceProfileUsed})',
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               const SizedBox(height: 4),
@@ -151,7 +189,10 @@ class VoiceTurnControls extends ConsumerWidget {
             ],
             if (state.history.isNotEmpty) ...<Widget>[
               const SizedBox(height: 12),
-              Text('Historial de voz', style: Theme.of(context).textTheme.titleSmall),
+              Text(
+                'Historial de voz',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
               const SizedBox(height: 6),
               ...state.history.take(3).map(_HistoryItem.new),
             ],
@@ -166,7 +207,9 @@ class VoiceTurnControls extends ConsumerWidget {
                 ),
                 child: Text(
                   state.errorMessage!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onErrorContainer,
+                  ),
                 ),
               ),
             ],
@@ -174,6 +217,15 @@ class VoiceTurnControls extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  String _voiceProfileLabel(VoiceProfile profile) {
+    final String description = (profile.description ?? '').trim();
+    if (description.isEmpty) {
+      return profile.label;
+    }
+
+    return '${profile.label} - $description';
   }
 }
 
@@ -186,12 +238,27 @@ class _StatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final (String label, IconData icon) = switch (status) {
       VoiceTurnStatus.idle => ('Listo', Icons.check_circle_outline_rounded),
-      VoiceTurnStatus.requestingPermission => ('Pidiendo permiso', Icons.lock_open_rounded),
+      VoiceTurnStatus.requestingPermission => (
+          'Pidiendo permiso',
+          Icons.lock_open_rounded,
+        ),
       VoiceTurnStatus.recording => ('Grabando', Icons.mic_rounded),
-      VoiceTurnStatus.uploading => ('Subiendo audio', Icons.cloud_upload_rounded),
-      VoiceTurnStatus.processingBackend => ('Procesando respuesta', Icons.psychology_rounded),
-      VoiceTurnStatus.responseReady => ('Respuesta lista', Icons.mark_chat_read_rounded),
-      VoiceTurnStatus.playingAudio => ('Reproduciendo', Icons.volume_up_rounded),
+      VoiceTurnStatus.uploading => (
+          'Subiendo audio',
+          Icons.cloud_upload_rounded
+        ),
+      VoiceTurnStatus.processingBackend => (
+          'Procesando respuesta',
+          Icons.psychology_rounded,
+        ),
+      VoiceTurnStatus.responseReady => (
+          'Respuesta lista',
+          Icons.mark_chat_read_rounded,
+        ),
+      VoiceTurnStatus.playingAudio => (
+          'Reproduciendo',
+          Icons.volume_up_rounded,
+        ),
       VoiceTurnStatus.error => ('Error', Icons.error_outline_rounded),
     };
 
@@ -217,14 +284,32 @@ class _HistoryItem extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Text(
-              '${item.createdAt.toLocal()} • perfil ${item.voiceProfileUsed}',
+              '${item.createdAt.toLocal()} - perfil ${item.voiceProfileUsed}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 4),
-            Text('Audio enviado: ${item.inputAudioPath ?? 'n/a'}', maxLines: 1, overflow: TextOverflow.ellipsis),
-            Text('Transcript: ${item.userTranscript.isEmpty ? '(sin transcript)' : item.userTranscript}'),
-            Text('Respuesta: ${item.assistantText}', maxLines: 2, overflow: TextOverflow.ellipsis),
-            Text('Audio respuesta: ${item.outputAudioMimeType} (${item.outputAudioBytes.length} bytes)'),
+            Text(
+              'Audio enviado: ${item.inputAudioPath ?? 'n/a'}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            Text(
+              'Transcript: ${item.userTranscript.isEmpty ? '(sin transcript)' : item.userTranscript}',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            Text(
+              'Respuesta: ${item.assistantText}',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            Text(
+              'Audio respuesta: ${item.outputAudioMimeType} (${item.outputAudioBytes.length} bytes)',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ],
         ),
       ),
